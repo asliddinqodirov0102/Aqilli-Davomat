@@ -120,14 +120,14 @@ def _make_qr_b64(data: str) -> str:
     if not QR_AVAILABLE:
         return ""
     qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
         box_size=20,
-        border=4,
+        border=6,
     )
     qr.add_data(data)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#10b981", back_color="#0f172a")
+    img = qr.make_image(fill_color="#000000", back_color="#ffffff")
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode()
