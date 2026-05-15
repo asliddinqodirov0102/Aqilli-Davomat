@@ -232,6 +232,10 @@
             <i class="fa-solid fa-circle-notch anim-spin text-4xl mb-4" style="color:var(--accent)"></i>
             <p class="font-semibold text-white">GPS va token tekshirilmoqda…</p>
             <p class="text-sm mt-1" style="color:var(--muted)">Bir soniya kuting</p>
+            <p id="verifying-hint" class="hidden text-xs mt-4 text-slate-500">
+              Uzoq kutayapsizmi? Internet yoki GPS muammosi bo'lishi mumkin.<br/>
+              <button onclick="showState('idle')" class="text-indigo-400 hover:text-indigo-300 underline mt-1">Orqaga qaytish</button>
+            </p>
           </div>
 
           <!-- SUCCESS -->
@@ -345,19 +349,41 @@
 
     /* ── Submit ── */
     async function submitAttendance(token, gps){
-      if(!token){ showError("Token bo'sh."); return; }
+      if(!token){ showError("Token bo'sh. QR kodni qayta skaner qiling."); return; }
       showState("verifying");
+
+      // Show elapsed seconds counter after 3s
+      let elapsedTimer = setTimeout(()=>{
+        const el = document.getElementById("verifying-hint");
+        if(el) el.classList.remove("hidden");
+      }, 3000);
+
+      const controller = new AbortController();
+      const timeoutId  = setTimeout(()=> controller.abort(), 15000);
       try{
-        const d = await (await fetch("/mark_attendance",{
+        const res = await fetch("/mark_attendance",{
           method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({token, latitude:gps.lat, longitude:gps.lon})
-        })).json();
+          body: JSON.stringify({token, latitude:gps.lat, longitude:gps.lon}),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId); clearTimeout(elapsedTimer);
+        // Guard against HTML error pages (e.g. Render 500)
+        const text = await res.text();
+        let d;
+        try { d = JSON.parse(text); }
+        catch { showError(`Server xatosi (${res.status}). Sahifani yangilab qayta urinib ko'ring.`); return; }
         if(d.success){
           $("success-detail").textContent = `Masofa: ${d.distance}m`;
           $("success-time").textContent   = new Date().toLocaleTimeString("uz-UZ");
           showState("success");
         } else { showError(d.error||"Noma'lum xato."); }
-      }catch(e){ showError("Server bilan bog'lanib bo'lmadi."); }
+      }catch(e){
+        clearTimeout(timeoutId); clearTimeout(elapsedTimer);
+        if(e.name==="AbortError")
+          showError("Server 15 soniyada javob bermadi. Internet aloqasini tekshiring va qayta urinib ko'ring.");
+        else
+          showError("Server bilan bog'lanib bo'lmadi. Internet aloqasini tekshiring.");
+      }
     }
     function showError(msg){ $("error-msg").textContent=msg; showState("error"); }
 

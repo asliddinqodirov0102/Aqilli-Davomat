@@ -213,14 +213,27 @@
 
             <!-- QR image -->
             <div class="flex flex-col items-center justify-center p-8" style="border-right:1px solid var(--border)">
-              <div class="relative">
+              <div class="relative group cursor-pointer" onclick="openFullscreen()" title="Kattalashtirish uchun bosing">
                 <div class="absolute inset-0 rounded-2xl anim-ping-ring" style="background:rgba(99,102,241,.15);blur:16px"></div>
                 <img id="qr-img" src="" alt="QR"
-                     class="relative rounded-2xl w-52 h-52 object-contain"
+                     class="relative rounded-2xl w-52 h-52 object-contain transition-transform duration-200 group-hover:scale-105"
                      style="border:3px solid rgba(99,102,241,.4);background:#070c1b"/>
+                <!-- Hover overlay -->
+                <div class="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                     style="background:rgba(0,0,0,.55)">
+                  <div class="text-center">
+                    <i class="fa-solid fa-expand text-white text-2xl mb-1"></i>
+                    <p class="text-white text-xs font-semibold">Proyektorga chiqarish</p>
+                  </div>
+                </div>
               </div>
+              <!-- Fullscreen button -->
+              <button onclick="openFullscreen()"
+                      class="mt-4 btn-outline text-xs px-4 py-2 w-full justify-center">
+                <i class="fa-solid fa-expand"></i> To'liq ekran (Proyektor)
+              </button>
               <!-- Countdown -->
-              <div class="mt-5 flex items-center gap-3">
+              <div class="mt-4 flex items-center gap-3">
                 <svg id="countdown-svg" width="48" height="48" viewBox="0 0 52 52">
                   <circle id="countdown-track" cx="26" cy="26" r="23"/>
                   <circle id="countdown-progress" cx="26" cy="26" r="23"
@@ -428,6 +441,83 @@
       if(!currentToken) return;
       window.location.href=`/api/export_session/${currentToken}`;
     });
+
+    /* ── Fullscreen QR ── */
+    function openFullscreen(){
+      if(!currentToken){ alert("Avval sessiya yarating."); return; }
+      $("fs-qr-img").src = $("qr-img").src;
+      $("fs-modal").classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+    function closeFullscreen(){
+      $("fs-modal").classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+    document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeFullscreen(); });
+    // Keep fullscreen checkin count in sync with poll
+    const _origAnimCount = animCount;
+    const origPoll = poll;
+    poll = async function(){
+      await origPoll();
+      if(!$("fs-modal").classList.contains("hidden")){
+        const n = parseInt($("checkin-count").textContent)||0;
+        $("fs-checkin-count").textContent = n;
+        $("fs-countdown").textContent = $("countdown-num").textContent;
+      }
+    };
   </script>
+
+  <!-- ══ FULLSCREEN QR MODAL ══════════════════════════════════════════ -->
+  <div id="fs-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center"
+       style="background:rgba(4,7,18,.97);backdrop-filter:blur(8px)">
+
+    <!-- Close button -->
+    <button onclick="closeFullscreen()"
+            class="absolute top-5 right-5 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 border border-slate-700 hover:text-white hover:border-slate-500 transition-all"
+            title="Yopish (Esc)">
+      <i class="fa-solid fa-xmark"></i> Yopish
+    </button>
+
+    <!-- Content -->
+    <div class="flex flex-col items-center gap-6 px-6 py-8 text-center max-w-lg w-full">
+
+      <!-- Title -->
+      <div>
+        <p class="text-slate-400 text-sm uppercase tracking-widest mb-1">Aqilli Davomat</p>
+        <h2 class="text-2xl font-extrabold text-white">QR kodni skaner qiling</h2>
+        <p class="text-slate-500 text-sm mt-1">Telefoningiz kamerasini QR kodga yo'naltiring</p>
+      </div>
+
+      <!-- Big QR -->
+      <div class="relative">
+        <div class="absolute inset-0 rounded-3xl" style="background:rgba(99,102,241,.2);filter:blur(30px)"></div>
+        <img id="fs-qr-img" src="" alt="QR"
+             class="relative rounded-3xl object-contain"
+             style="width:min(480px,85vw);height:min(480px,85vw);border:4px solid rgba(99,102,241,.5);background:#070c1b"/>
+      </div>
+
+      <!-- Live stats row -->
+      <div class="flex items-center gap-8">
+        <!-- Countdown -->
+        <div class="text-center">
+          <p id="fs-countdown" class="text-3xl font-extrabold text-white leading-none">5:00</p>
+          <p class="text-slate-500 text-xs mt-1">vaqt qoldi</p>
+        </div>
+        <!-- Divider -->
+        <div style="width:1px;height:40px;background:#1a2540"></div>
+        <!-- Checkins -->
+        <div class="text-center">
+          <p id="fs-checkin-count" class="text-3xl font-extrabold leading-none" style="color:#6366f1">0</p>
+          <p class="text-slate-500 text-xs mt-1">talaba qayd etdi</p>
+        </div>
+      </div>
+
+      <p class="text-slate-600 text-xs">
+        ESC tugmasi yoki "Yopish" tugmasi bilan yopasiz
+      </p>
+    </div>
+  </div>
+
 </body>
 </html>
+
