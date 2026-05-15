@@ -333,15 +333,8 @@
       scanner = new Html5Qrcode("qr-reader");
       try{
         await scanner.start(
-          {
-            facingMode: "environment",
-            // Request HD resolution for better distance scanning
-            advanced: [{ width: 1280, height: 720 }]
-          },
-          {
-            fps: 15,
-            // No qrbox — scan the full camera frame for maximum distance range
-          },
+          { facingMode: "environment" },
+          { fps: 15 },
           async decoded=>{
             await stopScanner();
             await submitAttendance(extractToken(decoded), gps);
