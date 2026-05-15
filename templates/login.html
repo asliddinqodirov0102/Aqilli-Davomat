@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kirish — Aqilli Davomat</title>
+  <meta name="description" content="Aqilli Davomat tizimiga kirish"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,body{font-family:'Inter',sans-serif;}
+    body { background:#060b18; color:#e2e8f0; min-height:100vh;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+      background-image: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,.12) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 80%, rgba(67,56,202,.1) 0%, transparent 60%); }
+
+    .card { background:#0c1225; border:1px solid #1a2540; border-radius:20px;
+      box-shadow:0 0 0 1px rgba(99,102,241,.08), 0 20px 60px rgba(0,0,0,.5); }
+
+    .input-wrap { position:relative; }
+    .input-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%);
+      color:#475569; font-size:13px; pointer-events:none; }
+    .field { width:100%; padding:11px 14px 11px 38px; border-radius:11px;
+      background:#080e1c; border:1px solid #1a2540; color:#e2e8f0;
+      font-size:14px; outline:none; transition:border-color .2s, box-shadow .2s; }
+    .field:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.18); }
+    .field::placeholder { color:#334155; }
+
+    .eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%);
+      color:#475569; cursor:pointer; background:none; border:none; padding:2px 4px;
+      transition:color .2s; }
+    .eye-btn:hover { color:#94a3b8; }
+
+    .btn-submit { width:100%; padding:12px; border-radius:12px; font-weight:700;
+      font-size:15px; color:#fff; border:none; cursor:pointer; transition:all .2s;
+      background:linear-gradient(135deg,#6366f1,#4f46e5);
+      box-shadow:0 4px 24px rgba(99,102,241,.35); }
+    .btn-submit:hover { background:linear-gradient(135deg,#4f46e5,#4338ca);transform:translateY(-1px); }
+    .btn-submit:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+    .err { display:none; font-size:12px; color:#f87171; margin-top:5px; margin-left:2px; }
+    .err.show { display:block; }
+
+    .err-banner { display:none; padding:12px 14px; border-radius:12px; font-size:13px;
+      background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:#f87171; gap:10px; }
+    .err-banner.show { display:flex; align-items:flex-start; }
+
+    .divider { display:flex; align-items:center; gap:12px; }
+    .divider-line { flex:1; height:1px; background:#1a2540; }
+
+    @keyframes slide-up { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .anim { animation:slide-up .5s cubic-bezier(.22,1,.36,1) both; }
+
+    @keyframes dot-b { 0%,80%,100%{transform:scale(.8);opacity:.5} 40%{transform:scale(1.2);opacity:1} }
+    .dot { display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin:0 2px; animation:dot-b 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+  </style>
+</head>
+<body>
+  <div class="w-full max-w-md anim">
+    <div class="card px-8 py-10">
+
+      <!-- Branding -->
+      <div class="text-center mb-8">
+        <div class="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-lg"
+             style="box-shadow:0 0 30px rgba(99,102,241,.4)">
+          <i class="fa-solid fa-clipboard-check text-white text-xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-white">Aqilli Davomat</h1>
+        <p class="text-sm mt-1 text-slate-500">Hisobingizga kiring</p>
+      </div>
+
+      <!-- Error banner -->
+      <div id="err-banner" class="err-banner mb-5">
+        <i class="fa-solid fa-circle-exclamation mt-0.5 shrink-0"></i>
+        <span id="err-banner-text"></span>
+      </div>
+
+      <!-- Form -->
+      <form id="login-form" novalidate class="space-y-4">
+
+        <!-- Username -->
+        <div>
+          <label for="username" class="block text-sm font-medium text-slate-300 mb-1.5">
+            Foydalanuvchi nomi
+          </label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-at"></i>
+            <input id="username" name="username" type="text" autocomplete="username"
+                   class="field" placeholder="username"/>
+          </div>
+          <p id="err-username" class="err"></p>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-slate-300 mb-1.5">Parol</label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-lock"></i>
+            <input id="password" name="password" type="password" autocomplete="current-password"
+                   class="field" placeholder="••••••••"/>
+            <button type="button" id="toggle-pw" class="eye-btn" aria-label="Ko'rsat/yashir">
+              <i id="eye-icon" class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+          <p id="err-password" class="err"></p>
+        </div>
+
+        <!-- Submit -->
+        <div class="pt-1">
+          <button id="submit-btn" type="submit" class="btn-submit">
+            <span id="btn-text">Kirish</span>
+            <span id="btn-loader" class="hidden">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Divider -->
+      <div class="divider my-6">
+        <div class="divider-line"></div>
+        <span class="text-xs text-slate-600">yoki</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Register link -->
+      <p class="text-center text-sm text-slate-500">
+        Hisobingiz yo'qmi?
+        <a href="/" class="font-semibold" style="color:#818cf8" onmouseover="this.style.color='#c7d2fe'" onmouseout="this.style.color='#818cf8'">
+          Ro'yxatdan o'tish <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </p>
+
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const showErr = (el,msg) => { el.textContent=msg; el.classList.add("show"); };
+    const hideErr = el => { el.textContent=""; el.classList.remove("show"); };
+
+    // Toggle password
+    $("toggle-pw").addEventListener("click",()=>{
+      const pw=$("password"); const show=pw.type==="text";
+      pw.type = show?"password":"text";
+      $("eye-icon").className = show?"fa-solid fa-eye":"fa-solid fa-eye-slash";
+    });
+
+    // Submit
+    $("login-form").addEventListener("submit", async e=>{
+      e.preventDefault();
+      hideErr($("err-username")); hideErr($("err-password"));
+      $("err-banner").classList.remove("show");
+
+      const body = { username:$("username").value.trim(), password:$("password").value };
+      let hasErr=false;
+      if(!body.username){ showErr($("err-username"),"Foydalanuvchi nomi majburiy."); hasErr=true; }
+      if(!body.password){ showErr($("err-password"),"Parol majburiy."); hasErr=true; }
+      if(hasErr) return;
+
+      $("btn-text").classList.add("hidden"); $("btn-loader").classList.remove("hidden");
+      $("submit-btn").disabled=true;
+      try{
+        const d = await (await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+        if(d.success){ window.location.href=d.redirect; }
+        else{
+          const errs=d.errors||{};
+          if(errs.username) showErr($("err-username"),errs.username);
+          if(errs.password){ $("err-banner-text").textContent=errs.password; $("err-banner").classList.add("show"); }
+        }
+      }catch(e){ $("err-banner-text").textContent="Server bilan bog'lanib bo'lmadi."; $("err-banner").classList.add("show"); }
+      finally{ $("btn-text").classList.remove("hidden"); $("btn-loader").classList.add("hidden"); $("submit-btn").disabled=false; }
+    });
+  </script>
+</body>
+</html>

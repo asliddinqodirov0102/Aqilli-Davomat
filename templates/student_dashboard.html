@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Talaba — Aqilli Davomat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, body { font-family:'Inter',sans-serif; }
+    :root {
+      --bg:#070c1b; --sidebar:#0b1022; --card:#0f1629;
+      --border:#1a2540; --primary:#6366f1; --accent:#818cf8; --text:#e2e8f0; --muted:#64748b;
+    }
+    body { background:var(--bg); color:var(--text); }
+
+    /* Sidebar */
+    #sidebar { background:var(--sidebar); border-right:1px solid var(--border); width:256px; }
+    .nav-link { display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
+      color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:all .2s; }
+    .nav-link:hover { background:rgba(99,102,241,.1);color:#c7d2fe; }
+    .nav-link.active { background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.25); }
+    .nav-link i { width:18px;text-align:center;font-size:13px; }
+
+    /* Cards */
+    .card { background:var(--card);border:1px solid var(--border);border-radius:16px; }
+    .card:hover { border-color:rgba(99,102,241,.3); }
+
+    /* Buttons */
+    .btn-primary { background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:12px;
+      font-weight:600;font-size:14px;padding:12px 24px;display:inline-flex;align-items:center;
+      gap:8px;cursor:pointer;transition:all .2s;border:none; }
+    .btn-primary:hover { background:linear-gradient(135deg,#4f46e5,#4338ca);transform:translateY(-1px); }
+    .btn-outline { background:transparent;border:1px solid var(--border);color:var(--muted);
+      border-radius:10px;font-size:13px;font-weight:500;padding:8px 16px;display:inline-flex;
+      align-items:center;gap:6px;cursor:pointer;transition:all .2s;width:100%;justify-content:center; }
+    .btn-outline:hover { border-color:var(--accent);color:#c7d2fe; }
+
+    /* QR scanner overrides */
+    #qr-reader { border:none !important; }
+    #qr-reader video { border-radius:14px;width:100% !important; }
+    #qr-reader__scan_region { border-radius:14px;overflow:hidden; }
+    #qr-reader__dashboard { display:none !important; }
+
+    /* Scanning overlay animation */
+    @keyframes scan-line {
+      0%   { top:4%; opacity:0; }
+      5%   { opacity:1; }
+      95%  { opacity:1; }
+      100% { top:94%; opacity:0; }
+    }
+    .scan-line {
+      position:absolute; left:12%; right:12%; height:2px; top:4%;
+      background:linear-gradient(90deg,transparent,#6366f1,#a5b4fc,#6366f1,transparent);
+      box-shadow:0 0 12px 2px rgba(99,102,241,.7);
+      animation:scan-line 2.2s ease-in-out infinite;
+      border-radius:2px;
+    }
+    /* Corner markers */
+    .corner { position:absolute;width:22px;height:22px; }
+    .corner-tl { top:8px;left:8px;border-top:2px solid #6366f1;border-left:2px solid #6366f1;border-radius:4px 0 0 0; }
+    .corner-tr { top:8px;right:8px;border-top:2px solid #6366f1;border-right:2px solid #6366f1;border-radius:0 4px 0 0; }
+    .corner-bl { bottom:8px;left:8px;border-bottom:2px solid #6366f1;border-left:2px solid #6366f1;border-radius:0 0 0 4px; }
+    .corner-br { bottom:8px;right:8px;border-bottom:2px solid #6366f1;border-right:2px solid #6366f1;border-radius:0 0 4px 0; }
+
+    /* GPS badge */
+    .gps-badge { display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+      font-size:11px;font-weight:500;border:1px solid var(--border); }
+
+    /* Animations */
+    @keyframes slide-down { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pop-in     { from{opacity:0;transform:scale(.88)} to{opacity:1;transform:scale(1)} }
+    @keyframes fade-in    { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+    @keyframes spin-slow  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .anim-slide-down { animation:slide-down .45s cubic-bezier(.22,1,.36,1) both; }
+    .anim-pop-in     { animation:pop-in .5s cubic-bezier(.22,1,.36,1) .1s both; }
+    .anim-fade-in    { animation:fade-in .35s ease both; }
+    .anim-spin       { animation:spin-slow 1.8s linear infinite; }
+
+    /* Field */
+    .field { background:#0a1020;border:1px solid var(--border);border-radius:10px;
+      color:var(--text);font-size:13px;padding:9px 12px;font-family:monospace;outline:none;
+      transition:border-color .2s;width:100%; }
+    .field:focus { border-color:var(--primary); }
+  </style>
+</head>
+
+<body class="min-h-screen flex">
+
+  <!-- ══ SIDEBAR ═════════════════════════════════════════════════════ -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex flex-col anim-slide-down
+                              transition-transform duration-300 md:translate-x-0 -translate-x-full">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-5" style="border-bottom:1px solid var(--border)">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg">
+        <i class="fa-solid fa-graduation-cap text-white" style="font-size:14px"></i>
+      </div>
+      <div>
+        <p class="font-bold text-white text-sm leading-tight">Aqilli Davomat</p>
+        <p class="text-xs" style="color:var(--accent)">Talaba paneli</p>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <p class="text-xs uppercase tracking-widest px-3 mb-2" style="color:var(--muted)">Menyu</p>
+      <a href="/student_dashboard" class="nav-link active">
+        <i class="fa-solid fa-house-chimney"></i><span>Bosh sahifa</span></a>
+      <a href="#scanner-section" class="nav-link"
+         onclick="document.getElementById('scanner-section').scrollIntoView({behavior:'smooth'});return false">
+        <i class="fa-solid fa-qrcode"></i><span>QR Skaner</span></a>
+      <a href="#" class="nav-link">
+        <i class="fa-solid fa-clock-rotate-left"></i><span>Tarix</span></a>
+      <a href="#" class="nav-link">
+        <i class="fa-solid fa-gear"></i><span>Sozlamalar</span></a>
+    </nav>
+
+    <!-- User -->
+    <div class="px-3 py-4" style="border-top:1px solid var(--border)">
+      <div class="flex items-center gap-3 px-3 py-3 rounded-xl" style="background:rgba(99,102,241,.08);border:1px solid var(--border)">
+        <div class="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-user text-white" style="font-size:11px"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-white truncate">{{ full_name }}</p>
+          <p class="text-xs" style="color:var(--accent)">Talaba</p>
+        </div>
+        <a href="/logout" title="Chiqish" style="color:var(--muted)" class="transition-colors"
+           onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--muted)'">
+          <i class="fa-solid fa-right-from-bracket text-sm"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile overlay -->
+  <div id="overlay" class="hidden fixed inset-0 bg-black/60 z-40 md:hidden"
+       onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')"></div>
+
+  <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
+  <div class="flex-1 flex flex-col min-h-screen" style="margin-left:256px">
+
+    <!-- Mobile topbar -->
+    <header class="md:hidden flex items-center gap-4 px-5 py-4 anim-slide-down"
+            style="background:var(--sidebar);border-bottom:1px solid var(--border)">
+      <button onclick="document.getElementById('sidebar').classList.remove('-translate-x-full');document.getElementById('overlay').classList.remove('hidden')"
+              class="text-slate-400 hover:text-white transition-colors">
+        <i class="fa-solid fa-bars text-lg"></i>
+      </button>
+      <p class="font-semibold text-white text-sm">Aqilli Davomat</p>
+    </header>
+
+    <main class="flex-1 px-6 py-8 max-w-3xl w-full mx-auto anim-pop-in">
+
+      <!-- Welcome -->
+      <div class="flex items-center gap-4 mb-8">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl"
+             style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 0 30px rgba(99,102,241,.3)">🎓</div>
+        <div>
+          <h1 class="text-xl font-extrabold text-white">Xush kelibsiz, <span style="color:var(--accent)">{{ full_name }}</span>!</h1>
+          <p class="text-sm" style="color:var(--muted)">Siz <span style="color:var(--accent)" class="font-medium">talaba</span> sifatida kirdingiz</p>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-3 gap-4 mb-8">
+        {% for label, icon in [("Jami darslar","fa-calendar-days"),("Keldi","fa-circle-check"),("Davomat %","fa-chart-pie")] %}
+        <div class="card p-5 transition-all">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:rgba(99,102,241,.15)">
+            <i class="fa-solid {{ icon }}" style="color:var(--accent);font-size:13px"></i>
+          </div>
+          <p class="text-2xl font-bold text-white">—</p>
+          <p class="text-xs mt-1" style="color:var(--muted)">{{ label }}</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Scanner card -->
+      <div id="scanner-section" class="card overflow-hidden mb-5" style="border-color:rgba(99,102,241,.25)">
+
+        <!-- Card header -->
+        <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(99,102,241,.15)">
+              <i class="fa-solid fa-qrcode" style="color:var(--accent);font-size:12px"></i>
+            </div>
+            <span class="font-semibold text-white text-sm">QR Skanerlash</span>
+          </div>
+          <!-- GPS badge -->
+          <div id="gps-badge" class="gps-badge" style="background:#111827;color:var(--muted)">
+            <i class="fa-solid fa-location-dot" style="font-size:11px"></i>
+            <span id="gps-label">GPS aniqlanmagan</span>
+          </div>
+        </div>
+
+        <!-- States -->
+        <div class="p-8">
+
+          <!-- IDLE -->
+          <div id="state-idle" class="text-center">
+            <div class="text-5xl mb-5">📱</div>
+            <p class="font-semibold text-white mb-1">Davomatni qayd etish</p>
+            <p class="text-sm mb-8" style="color:var(--muted)">Kamera orqali o'qituvchi QR kodini skaner qiling</p>
+            <button id="scan-btn" class="btn-primary mx-auto" onclick="startScanner()">
+              <i class="fa-solid fa-camera"></i> Davomatni Belgilash
+            </button>
+          </div>
+
+          <!-- SCANNING -->
+          <div id="state-scanning" class="hidden">
+            <!-- Camera with scan overlay -->
+            <div class="relative rounded-2xl overflow-hidden" style="background:#070c1b;min-height:260px">
+              <!-- Corner markers -->
+              <div class="corner corner-tl z-10"></div>
+              <div class="corner corner-tr z-10"></div>
+              <div class="corner corner-bl z-10"></div>
+              <div class="corner corner-br z-10"></div>
+              <!-- Scanning line -->
+              <div class="scan-line z-10"></div>
+              <!-- Camera feed -->
+              <div id="qr-reader"></div>
+            </div>
+            <p class="text-center text-sm mt-3" style="color:var(--muted)">QR kodni kamera oldiga tutib turing…</p>
+            <button class="btn-outline mt-3" onclick="stopScanner();showState('idle')">
+              <i class="fa-solid fa-xmark"></i> Bekor qilish
+            </button>
+          </div>
+
+          <!-- VERIFYING -->
+          <div id="state-verifying" class="hidden text-center py-8">
+            <i class="fa-solid fa-circle-notch anim-spin text-4xl mb-4" style="color:var(--accent)"></i>
+            <p class="font-semibold text-white">GPS va token tekshirilmoqda…</p>
+            <p class="text-sm mt-1" style="color:var(--muted)">Bir soniya kuting</p>
+          </div>
+
+          <!-- SUCCESS -->
+          <div id="state-success" class="hidden text-center py-6 anim-fade-in">
+            <div class="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center"
+                 style="background:rgba(16,185,129,.12);border:2px solid rgba(16,185,129,.4)">
+              <i class="fa-solid fa-circle-check text-4xl text-emerald-400"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white mb-2">Davomat muvaffaqiyatli qayd etildi!</h2>
+            <p id="success-detail" class="text-sm mb-5" style="color:var(--muted)"></p>
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-emerald-400"
+                 style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25)">
+              <i class="fa-solid fa-clock text-xs"></i> <span id="success-time"></span>
+            </div>
+            <div class="mt-6"><button class="btn-outline" style="max-width:180px;margin:0 auto" onclick="showState('idle')">
+              <i class="fa-solid fa-check"></i> Yopish</button></div>
+          </div>
+
+          <!-- ERROR -->
+          <div id="state-error" class="hidden text-center py-6 anim-fade-in">
+            <div class="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center"
+                 style="background:rgba(239,68,68,.1);border:2px solid rgba(239,68,68,.35)">
+              <i class="fa-solid fa-triangle-exclamation text-4xl text-red-400"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white mb-2">Xatolik yuz berdi</h2>
+            <p id="error-msg" class="text-sm mb-6 max-w-xs mx-auto" style="color:#f87171"></p>
+            <button class="btn-primary mx-auto" onclick="showState('idle')">
+              <i class="fa-solid fa-rotate-right"></i> Qayta urinish
+            </button>
+          </div>
+
+        </div><!-- /states -->
+      </div><!-- /scanner card -->
+
+      <!-- Manual token -->
+      <div class="card px-6 py-5">
+        <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted)">
+          <i class="fa-solid fa-keyboard mr-1"></i> Qo'lda token kiritish
+        </p>
+        <div class="flex gap-3">
+          <input id="manual-token" type="text" class="field flex-1" placeholder="32 belgili token…"/>
+          <button id="manual-submit" onclick="manualSubmit()"
+                  class="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                  style="background:#6366f1" onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'">
+            Yuborish
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    /* ── DOM ── */
+    const $ = id => document.getElementById(id);
+
+    /* ── States ── */
+    const STATES = ["idle","scanning","verifying","success","error"];
+    function showState(s){ STATES.forEach(n=>$("state-"+n).classList.toggle("hidden", n!==s)); }
+
+    /* ── GPS ── */
+    let cachedGPS = null;
+    function setGPSBadge(state, txt){
+      const badge = $("gps-badge");
+      const styles = {
+        unknown: {bg:"#111827",color:"var(--muted)"},
+        getting: {bg:"rgba(245,158,11,.12)",color:"#fbbf24"},
+        ok:      {bg:"rgba(16,185,129,.12)",color:"#34d399"},
+        error:   {bg:"rgba(239,68,68,.12)", color:"#f87171"},
+      };
+      const s = styles[state]||styles.unknown;
+      badge.style.background = s.bg; badge.style.color = s.color;
+      badge.style.borderColor = s.color.replace(")", ",.3)").replace("rgb","rgba");
+      $("gps-label").textContent = txt;
+    }
+    function getGPS(){
+      return new Promise((res,rej)=>{
+        if(!navigator.geolocation){ rej(new Error("Brauzeringiz GPS ni qo'llab-quvvatlamaydi.")); return; }
+        setGPSBadge("getting","GPS aniqlanmoqda…");
+        navigator.geolocation.getCurrentPosition(
+          p=>{ cachedGPS={lat:p.coords.latitude,lon:p.coords.longitude};
+            setGPSBadge("ok",`GPS tayyor (±${Math.round(p.coords.accuracy)}m)`); res(cachedGPS); },
+          ()=>{ setGPSBadge("error","GPS ruxsati berilmadi");
+            rej(new Error("GPS ruxsati berilmadi. Brauzer sozlamalarini tekshiring.")); },
+          {timeout:10000,enableHighAccuracy:true}
+        );
+      });
+    }
+
+    /* ── QR Scanner ── */
+    let scanner = null;
+    async function startScanner(){
+      let gps; try{ gps=await getGPS(); }catch(e){ showError(e.message); return; }
+      showState("scanning");
+      scanner = new Html5Qrcode("qr-reader");
+      try{
+        await scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:210,height:210}},
+          async decoded=>{
+            await stopScanner();
+            await submitAttendance(extractToken(decoded), gps);
+          }, ()=>{});
+      }catch(e){ showState("idle"); showError("Kamera ochilmadi: "+e); }
+    }
+    async function stopScanner(){
+      if(scanner){ try{await scanner.stop();}catch(_){} scanner=null; }
+    }
+    function extractToken(t){
+      const m=t.match(/\/checkin\/([a-f0-9]{32})/i);
+      return m?m[1]:t.trim();
+    }
+
+    /* ── Submit ── */
+    async function submitAttendance(token, gps){
+      if(!token){ showError("Token bo'sh."); return; }
+      showState("verifying");
+      try{
+        const d = await (await fetch("/mark_attendance",{
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({token, latitude:gps.lat, longitude:gps.lon})
+        })).json();
+        if(d.success){
+          $("success-detail").textContent = `Masofa: ${d.distance}m`;
+          $("success-time").textContent   = new Date().toLocaleTimeString("uz-UZ");
+          showState("success");
+        } else { showError(d.error||"Noma'lum xato."); }
+      }catch(e){ showError("Server bilan bog'lanib bo'lmadi."); }
+    }
+    function showError(msg){ $("error-msg").textContent=msg; showState("error"); }
+
+    /* ── Manual submit ── */
+    async function manualSubmit(){
+      const token=$("manual-token").value.trim();
+      if(!token){ alert("Token kiriting."); return; }
+      let gps; try{ gps=await getGPS(); }catch(e){ showError(e.message); return; }
+      await submitAttendance(token,gps);
+    }
+
+    /* ── URL token auto-fill ── */
+    const urlToken=new URLSearchParams(location.search).get("token");
+    if(urlToken){
+      $("manual-token").value=urlToken;
+      history.replaceState({},"",location.pathname);
+      (async()=>{ let gps; try{gps=await getGPS();}catch(e){showError(e.message);return;} await submitAttendance(urlToken,gps); })();
+    }
+
+    /* ── Pre-warm GPS ── */
+    getGPS().catch(()=>{});
+  </script>
+</body>
+</html>
