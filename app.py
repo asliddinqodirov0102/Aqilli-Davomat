@@ -136,11 +136,12 @@ def _make_qr_b64(data: str) -> str:
 # ── Auth decorator ──────────────────────────────────────────────────────────
 
 def login_required(f):
-    """Redirect unauthenticated visitors to /login."""
+    """Redirect unauthenticated visitors to /login, preserving the target URL."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if "user_id" not in session:
-            return redirect(url_for("login"))
+            # Save the full requested URL so we can return after login
+            return redirect(url_for("login") + "?next=" + request.url)
         return f(*args, **kwargs)
     return decorated
 
@@ -254,9 +255,27 @@ def login_post():
     session["full_name"] = user["full_name"]
     session["role"]      = user["role"]
 
-    redirect_url = url_for(
-        "teacher_dashboard" if user["role"] == "teacher" else "student_dashboard"
-    )
+    # Honour ?next= (e.g. /checkin/<token> saved by login_required)
+    next_url = request.args.get("next") or request.get_json(silent=True, force=True) and None
+    if not next_url:
+        data_again = request.get_json(silent=True) or {}
+        next_url = data_again.get("next", "")
+    if next_url and next_url.startswith("http"):
+        # Absolute URL — only allow same host for security
+        from urllib.parse import urlparse
+        parsed = urlparse(next_url)
+        if parsed.netloc == request.host:
+            redirect_url = next_url
+        else:
+            redirect_url = url_for(
+                "teacher_dashboard" if user["role"] == "teacher" else "student_dashboard"
+            )
+    elif next_url and next_url.startswith("/"):
+        redirect_url = next_url
+    else:
+        redirect_url = url_for(
+            "teacher_dashboard" if user["role"] == "teacher" else "student_dashboard"
+        )
     return jsonify({"success": True, "redirect": redirect_url}), 200
 
 
@@ -652,9 +671,10 @@ def export_session(token):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+# Always initialise DB so Render's ephemeral container is ready on cold start
+init_db()
+
 if __name__ == "__main__":
-    init_db()
-    print("✅  Ma'lumotlar bazasi tayyor.")
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀  Server ishga tushmoqda: http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port)

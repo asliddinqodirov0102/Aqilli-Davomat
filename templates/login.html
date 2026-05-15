@@ -140,6 +140,9 @@
     const showErr = (el,msg) => { el.textContent=msg; el.classList.add("show"); };
     const hideErr = el => { el.textContent=""; el.classList.remove("show"); };
 
+    // Read ?next= from current URL (set by login_required decorator)
+    const nextUrl = new URLSearchParams(location.search).get("next") || "";
+
     // Toggle password
     $("toggle-pw").addEventListener("click",()=>{
       const pw=$("password"); const show=pw.type==="text";
@@ -153,7 +156,11 @@
       hideErr($("err-username")); hideErr($("err-password"));
       $("err-banner").classList.remove("show");
 
-      const body = { username:$("username").value.trim(), password:$("password").value };
+      const body = {
+        username: $("username").value.trim(),
+        password: $("password").value,
+        next: nextUrl   // pass the ?next= URL to the server
+      };
       let hasErr=false;
       if(!body.username){ showErr($("err-username"),"Foydalanuvchi nomi majburiy."); hasErr=true; }
       if(!body.password){ showErr($("err-password"),"Parol majburiy."); hasErr=true; }
@@ -162,7 +169,9 @@
       $("btn-text").classList.add("hidden"); $("btn-loader").classList.remove("hidden");
       $("submit-btn").disabled=true;
       try{
-        const d = await (await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+        // Append ?next= to the POST URL as well so the server can read it from args
+        const postUrl = nextUrl ? `/login?next=${encodeURIComponent(nextUrl)}` : "/login";
+        const d = await (await fetch(postUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
         if(d.success){ window.location.href=d.redirect; }
         else{
           const errs=d.errors||{};
@@ -173,5 +182,6 @@
       finally{ $("btn-text").classList.remove("hidden"); $("btn-loader").classList.add("hidden"); $("submit-btn").disabled=false; }
     });
   </script>
+
 </body>
 </html>
