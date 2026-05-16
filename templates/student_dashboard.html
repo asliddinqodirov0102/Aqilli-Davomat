@@ -14,6 +14,8 @@
       --border:#1a2540; --primary:#6366f1; --accent:#818cf8; --text:#e2e8f0; --muted:#64748b;
     }
     body { background:var(--bg); color:var(--text); }
+    .md-main { margin-left:256px; }
+    @media(max-width:767px){ .md-main{ margin-left:0; } }
 
     /* Sidebar */
     #sidebar { background:var(--sidebar); border-right:1px solid var(--border); width:256px; }
@@ -139,7 +141,7 @@
        onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')"></div>
 
   <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
-  <div class="flex-1 flex flex-col min-h-screen" style="margin-left:256px">
+  <div class="flex-1 flex flex-col min-h-screen md-main">
 
     <!-- Mobile topbar -->
     <header class="md:hidden flex items-center gap-4 px-5 py-4 anim-slide-down"
@@ -327,22 +329,57 @@
 
     /* ── QR Scanner ── */
     let scanner = null;
+    let scannerActive = false;
+
     async function startScanner(){
       let gps; try{ gps=await getGPS(); }catch(e){ showError(e.message); return; }
       showState("scanning");
       scanner = new Html5Qrcode("qr-reader");
+      scannerActive = true;
+
+      // Try environment camera with zoom constraint for mobile
+      const constraints = {
+        facingMode: "environment",
+        advanced: [{ zoom: 1.0 }]
+      };
+      const config = {
+        fps: 15,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      };
+
       try{
         await scanner.start(
-          { facingMode: "environment" },
-          { fps: 15 },
-          async decoded=>{
+          constraints, config,
+          async decoded =>{
+            if(!scannerActive) return;
+            scannerActive = false;
             await stopScanner();
             await submitAttendance(extractToken(decoded), gps);
           }, ()=>{});
-      }catch(e){ showState("idle"); showError("Kamera ochilmadi: "+e); }
+
+        // After camera starts, try to apply zoom=1 to bring focus closer
+        try{
+          const track = scanner.getRunningTrackCameraCapabilities();
+          if(track && track.zoomFeature && track.zoomFeature().isSupported()){
+            await track.zoomFeature().apply(1.0);
+          }
+        }catch(_){}
+
+      }catch(e){
+        scannerActive = false;
+        showState("idle");
+        showError("Kamera ochilmadi: "+e);
+      }
     }
+
     async function stopScanner(){
-      if(scanner){ try{await scanner.stop();}catch(_){} scanner=null; }
+      scannerActive = false;
+      if(scanner){
+        try{ await scanner.stop(); }catch(_){}
+        scanner = null;
+      }
     }
     function extractToken(t){
       const m=t.match(/\/checkin\/([a-f0-9]{32})/i);

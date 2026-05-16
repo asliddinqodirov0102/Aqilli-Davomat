@@ -84,13 +84,15 @@ def init_db():
             is_active     INTEGER NOT NULL DEFAULT 1,
             classroom_lat REAL,
             classroom_lon REAL,
+            subject       TEXT,
             FOREIGN KEY (teacher_id) REFERENCES users(id)
         )
     """)
-    # Migration: add classroom columns to existing databases
+    # Migration: add columns to existing databases
     for col_sql in [
         "ALTER TABLE attendance_sessions ADD COLUMN classroom_lat REAL",
         "ALTER TABLE attendance_sessions ADD COLUMN classroom_lon REAL",
+        "ALTER TABLE attendance_sessions ADD COLUMN subject TEXT",
     ]:
         try:
             conn.execute(col_sql)
@@ -333,35 +335,38 @@ def start_session():
     if not QR_AVAILABLE:
         return jsonify({"error": "qrcode kutubxonasi o'rnatilmagan. 'pip install qrcode[pil]' buyrug'ini ishga tushiring."}), 500
 
+    data = request.get_json(silent=True) or {}
+    subject = (data.get("subject") or "").strip()
+    if not subject:
+        return jsonify({"error": "Fan nomi kiritilmagan."}), 422
+
     teacher_id = session["user_id"]
-    token = uuid.uuid4().hex          # 32-char hex token
+    token = uuid.uuid4().hex
     now   = datetime.now(timezone.utc).isoformat()
 
     conn = get_db()
-    # Deactivate all previous sessions for this teacher
     conn.execute(
         "UPDATE attendance_sessions SET is_active = 0 WHERE teacher_id = ? AND is_active = 1",
         (teacher_id,)
     )
-    # Insert new session
     conn.execute(
-        "INSERT INTO attendance_sessions (token, teacher_id, created_at, is_active) VALUES (?, ?, ?, 1)",
-        (token, teacher_id, now)
+        "INSERT INTO attendance_sessions (token, teacher_id, created_at, is_active, subject) VALUES (?, ?, ?, 1, ?)",
+        (token, teacher_id, now, subject)
     )
     conn.commit()
     conn.close()
 
-    # Build the check-in URL that will be encoded in the QR
     checkin_url = request.host_url.rstrip("/") + f"/checkin/{token}"
     qr_b64 = _make_qr_b64(checkin_url)
 
     return jsonify({
-        "success":  True,
-        "token":    token,
-        "qr_b64":   qr_b64,
+        "success":    True,
+        "token":      token,
+        "qr_b64":     qr_b64,
         "created_at": now,
         "expires_in": SESSION_TTL,
         "checkin_url": checkin_url,
+        "subject":    subject,
     }), 201
 
 
@@ -384,7 +389,6 @@ def session_status(token):
     is_active  = bool(row["is_active"])
 
     if not is_active or age > SESSION_TTL:
-        # Auto-expire in DB if TTL exceeded
         if is_active and age > SESSION_TTL:
             conn.execute(
                 "UPDATE attendance_sessions SET is_active = 0 WHERE token = ?", (token,)
@@ -393,19 +397,27 @@ def session_status(token):
         conn.close()
         return jsonify({"valid": False, "reason": "Sessiya muddati tugagan.", "age": int(age)}), 200
 
-    # Count checked-in students
-    checkin_count = conn.execute(
-        "SELECT COUNT(*) FROM attendance_records WHERE session_token = ?", (token,)
-    ).fetchone()[0]
+    # Fetch checked-in students list
+    records = conn.execute(
+        """
+        SELECT u.full_name, u.username, r.marked_at, r.distance_m
+        FROM attendance_records r
+        JOIN users u ON u.id = r.student_id
+        WHERE r.session_token = ?
+        ORDER BY r.marked_at
+        """, (token,)
+    ).fetchall()
 
     conn.close()
     remaining = max(0, SESSION_TTL - int(age))
     return jsonify({
         "valid":         True,
         "token":         token,
-        "checkin_count": checkin_count,
+        "checkin_count": len(records),
         "age":           int(age),
         "remaining":     remaining,
+        "students":      [{"full_name": r["full_name"], "username": r["username"],
+                           "marked_at": r["marked_at"], "distance_m": r["distance_m"]} for r in records],
     }), 200
 
 
@@ -588,7 +600,8 @@ def export_session(token):
     # ── Title row ─────────────────────────────────────────────────────────
     ws.merge_cells("A1:E1")
     title_cell = ws["A1"]
-    title_cell.value     = f"Davomat hisoboti — {token[:8]}…"
+    subject_name = sess_row["subject"] or "Noma'lum fan"
+    title_cell.value     = f"Davomat hisoboti — {subject_name} ({token[:8]}…)"
     title_cell.font      = Font(bold=True, size=14, color="10B981", name="Calibri")
     title_cell.fill      = PatternFill("solid", fgColor="0a1512")
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -596,34 +609,36 @@ def export_session(token):
 
     # ── Meta rows ─────────────────────────────────────────────────────────
     meta_font = Font(color="6EE7B7", name="Calibri", size=10)
-    ws["A2"] = "Sessiya tokeni:"
-    ws["B2"] = token
-    ws["A3"] = "Eksport vaqti:"
-    ws["B3"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    ws["A4"] = "Jami talabalar:"
-    ws["B4"] = len(rows)
-    for r in range(2, 5):
+    ws["A2"] = "Fan:"
+    ws["B2"] = sess_row["subject"] or "—"
+    ws["A3"] = "Sessiya tokeni:"
+    ws["B3"] = token
+    ws["A4"] = "Eksport vaqti:"
+    ws["B4"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ws["A5"] = "Jami talabalar:"
+    ws["B5"] = len(rows)
+    for r in range(2, 6):
         ws.cell(r, 1).font = Font(bold=True, color="A7F3D0", name="Calibri", size=10)
         ws.cell(r, 2).font = meta_font
         for c in range(1, 6):
             ws.cell(r, c).fill = PatternFill("solid", fgColor="0d1f18")
 
-    ws.row_dimensions[5].height = 8  # spacer
+    ws.row_dimensions[6].height = 8  # spacer
 
     # ── Header row ────────────────────────────────────────────────────────
     headers = ["#", "To'liq Ism", "Login (Username)", "Vaqt (UTC)", "Masofa (m)"]
     for col, h in enumerate(headers, 1):
-        cell = ws.cell(6, col)
+        cell = ws.cell(7, col)
         cell.value     = h
         cell.font      = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
         cell.fill      = HDR_FILL
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border    = border
-    ws.row_dimensions[6].height = 22
+    ws.row_dimensions[7].height = 22
 
     # ── Data rows ─────────────────────────────────────────────────────────
     for i, row in enumerate(rows, 1):
-        xlsx_row = i + 6
+        xlsx_row = i + 7
         fill = ALT_FILL if i % 2 == 0 else PatternFill("solid", fgColor="111f18")
         # Format timestamp: strip microseconds, make readable
         try:
@@ -645,9 +660,9 @@ def export_session(token):
 
     # No-data notice
     if not rows:
-        ws.cell(7, 1).value = "Hech kim davomat qilmagan."
-        ws.cell(7, 1).font  = Font(color="6B7280", italic=True, name="Calibri")
-        ws.merge_cells("A7:E7")
+        ws.cell(8, 1).value = "Hech kim davomat qilmagan."
+        ws.cell(8, 1).font  = Font(color="6B7280", italic=True, name="Calibri")
+        ws.merge_cells("A8:E8")
 
     # ── Column widths ─────────────────────────────────────────────────────
     col_widths = [5, 28, 22, 22, 14]

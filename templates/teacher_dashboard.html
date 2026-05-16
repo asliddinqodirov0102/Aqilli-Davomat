@@ -136,21 +136,35 @@
     <main class="flex-1 px-6 py-8 max-w-5xl w-full mx-auto anim-pop-in">
 
       <!-- Welcome row -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 mb-8">
+      <div class="flex flex-col gap-5 mb-8">
         <div class="flex items-center gap-4">
           <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl"
                style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 0 30px rgba(99,102,241,.3)">📚</div>
           <div>
             <h1 class="text-xl font-extrabold text-white">Xush kelibsiz, <span style="color:var(--accent)">{{ full_name }}</span>!</h1>
-            <p class="text-sm" style="color:var(--muted)">Bugungi dars davomati</p>
+            <p class="text-sm" style="color:var(--muted)">Davomat boshlanishidan oldin fanni tanlang</p>
           </div>
         </div>
-        <!-- Start button -->
-        <button id="start-btn" class="btn-primary" onclick="startSession()">
-          <i class="fa-solid fa-circle-play"></i>
-          <span id="start-label">Davomatni boshlash</span>
-          <span id="start-loader" class="hidden"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
-        </button>
+        <!-- Subject + Start -->
+        <div class="card p-5" style="border-color:rgba(99,102,241,.3)">
+          <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted)">
+            <i class="fa-solid fa-book-open mr-1"></i> Dars fani
+          </p>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <input id="subject-input" type="text" class="field flex-1"
+                   placeholder="Masalan: Matematika, Fizika, Ingliz tili…"
+                   style="outline:none;transition:border-color .2s"
+                   onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"/>
+            <button id="start-btn" class="btn-primary whitespace-nowrap" onclick="startSession()">
+              <i class="fa-solid fa-circle-play"></i>
+              <span id="start-label">Davomatni boshlash</span>
+              <span id="start-loader" class="hidden"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </button>
+          </div>
+          <p id="subject-error" class="hidden text-xs mt-2" style="color:#f87171">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i>Fan nomini kiriting!
+          </p>
+        </div>
       </div>
 
       <!-- Stats -->
@@ -291,7 +305,21 @@
           <i class="fa-solid fa-triangle-exclamation text-red-400 mt-0.5"></i>
           <div>
             <p class="text-red-300 font-semibold text-sm">Sessiya muddati tugadi!</p>
-            <p class="text-red-400/70 text-xs mt-0.5">"Davomatni boshlash" tugmasini bosib yangi sessiya yarating.</p>
+            <p class="text-red-400/70 text-xs mt-0.5">Fan va sessiyani qayta boshlash uchun yuqoridagi tugmani bosing.</p>
+          </div>
+        </div>
+
+        <!-- Students live list -->
+        <div id="students-panel" class="hidden mt-5 card overflow-hidden" style="border-color:rgba(16,185,129,.25)">
+          <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--border);background:rgba(16,185,129,.06)">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-users text-emerald-400 text-sm"></i>
+              <span class="font-semibold text-white text-sm">Kelgan talabalar ro'yxati</span>
+            </div>
+            <span id="students-badge" class="text-xs font-bold px-3 py-1 rounded-full" style="background:rgba(16,185,129,.15);color:#34d399">0 nafar</span>
+          </div>
+          <div id="students-list" class="divide-y" style="border-color:var(--border);max-height:320px;overflow-y:auto">
+            <p class="text-center py-6 text-sm" style="color:var(--muted)">Hali hech kim davomat qilmagan…</p>
           </div>
         </div>
       </div>
@@ -314,10 +342,11 @@
     const CIRC_LEN    = 144.51;
 
     /* ── State ── */
-    let currentToken = null;
-    let pollTimer    = null;
-    let cdTimer      = null;
-    let pollCD       = POLL_MS / 1000;
+    let currentToken   = null;
+    let currentSubject = "";
+    let pollTimer      = null;
+    let cdTimer        = null;
+    let pollCD         = POLL_MS / 1000;
 
     /* ── DOM ── */
     const $  = id => document.getElementById(id);
@@ -356,6 +385,33 @@
         el.classList.remove("anim-count-up"); void el.offsetWidth; el.classList.add("anim-count-up"); }
     }
 
+    /* ── Render students list ── */
+    function renderStudents(students){
+      const list = $("students-list");
+      const badge = $("students-badge");
+      if(!students || students.length===0){
+        list.innerHTML='<p class="text-center py-6 text-sm" style="color:var(--muted)">Hali hech kim davomat qilmagan…</p>';
+        badge.textContent="0 nafar";
+        return;
+      }
+      badge.textContent = students.length+" nafar";
+      list.innerHTML = students.map((s,i)=>{
+        const t = new Date(s.marked_at).toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
+        return `<div class="flex items-center gap-3 px-5 py-3">
+          <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                style="background:rgba(99,102,241,.2);color:var(--accent)">${i+1}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-white truncate">${s.full_name}</p>
+            <p class="text-xs" style="color:var(--muted)">${s.username}</p>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="text-xs font-medium" style="color:#34d399">${t}</p>
+            <p class="text-xs" style="color:var(--muted)">${Math.round(s.distance_m||0)}m</p>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
     /* ── Poll ── */
     async function poll(){
       if(!currentToken) return;
@@ -365,6 +421,7 @@
         animCount($("checkin-count"), d.checkin_count);
         animCount($("stat-checkins"), d.checkin_count);
         startCD(d.remaining);
+        renderStudents(d.students);
       }catch(e){ console.warn(e); }
       pollCD = POLL_MS/1000;
     }
@@ -372,13 +429,26 @@
 
     /* ── Start session ── */
     async function startSession(){
+      const subjectInput = $("subject-input");
+      const subject = subjectInput ? subjectInput.value.trim() : "";
+      if(!subject){
+        $("subject-error").classList.remove("hidden");
+        subjectInput && subjectInput.focus();
+        return;
+      }
+      $("subject-error") && $("subject-error").classList.add("hidden");
       startBtn.disabled = true;
       startLabel.classList.add("hidden");
       startLoader.classList.remove("hidden");
       try{
-        const d = await (await fetch("/api/start_session",{method:"POST"})).json();
+        const d = await (await fetch("/api/start_session",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({subject})
+        })).json();
         if(!d.success){ alert(d.error||"Xato"); return; }
         currentToken = d.token;
+        currentSubject = d.subject;
         $("qr-img").src = "data:image/png;base64,"+d.qr_b64;
         $("token-display").textContent = d.token;
         $("checkin-url").textContent   = d.checkin_url;
@@ -390,6 +460,9 @@
         $("loc-bar").classList.add("hidden");
         $("placeholder").classList.add("hidden");
         $("qr-panel").classList.remove("hidden");
+        $("students-panel").classList.remove("hidden");
+        $("students-list").innerHTML = '<p class="text-center py-6 text-sm" style="color:var(--muted)">Hali hech kim davomat qilmagan…</p>';
+        $("students-badge").textContent = "0 nafar";
         startCD(d.expires_in);
         clearInterval(pollTimer);
         pollTimer = setInterval(poll, POLL_MS);
