@@ -504,16 +504,18 @@ def mark_attendance():
         return jsonify({"success": False, "error": "QR kod muddati tugagan. O'qituvchidan yangi QR so'rang."}), 410
 
     # ── Check 2: GPS distance (use session-specific classroom if set) ──────────
-    class_lat = row["classroom_lat"] if row["classroom_lat"] is not None else CLASSROOM_LAT
-    class_lon = row["classroom_lon"] if row["classroom_lon"] is not None else CLASSROOM_LON
-    distance = haversine_m(lat, lon, class_lat, class_lon)
-    if distance > MAX_DISTANCE_M:
-        conn.close()
-        return jsonify({
-            "success":  False,
-            "error":    f"Siz sinf xonasidan juda uzoqdasiz ({distance:.0f}m). Ruxsat etilgan masofa: {MAX_DISTANCE_M}m.",
-            "distance": round(distance, 1),
-        }), 403
+    distance = 0.0
+    if row["classroom_lat"] is not None and row["classroom_lon"] is not None:
+        class_lat = row["classroom_lat"]
+        class_lon = row["classroom_lon"]
+        distance = haversine_m(lat, lon, class_lat, class_lon)
+        if distance > MAX_DISTANCE_M:
+            conn.close()
+            return jsonify({
+                "success":  False,
+                "error":    f"Siz sinf xonasidan juda uzoqdasiz ({distance:.0f}m). Ruxsat etilgan masofa: {MAX_DISTANCE_M}m.",
+                "distance": round(distance, 1),
+            }), 403
 
     # ── Record attendance ──────────────────────────────────────────────────
     student_id = session["user_id"]
@@ -682,6 +684,89 @@ def export_session(token):
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ── Profile Update ────────────────────────────────────────────────────────────
+
+@app.route("/api/update_profile", methods=["POST"])
+@login_required
+def update_profile():
+    data = request.get_json()
+    full_name = (data.get("full_name") or "").strip()
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+    
+    if not full_name or not username:
+        return jsonify({"success": False, "error": "Ism va foydalanuvchi nomi majburiy."}), 422
+    
+    user_id = session["user_id"]
+    conn = get_db()
+    
+    # Check if username is taken by someone else
+    existing = conn.execute("SELECT id FROM users WHERE username = ? AND id != ?", (username, user_id)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({"success": False, "error": "Bu login band."}), 409
+    
+    if password:
+        if len(password) < 6:
+            conn.close()
+            return jsonify({"success": False, "error": "Parol kamida 6 ta belgi bo'lishi kerak."}), 422
+        hashed_pw = generate_password_hash(password)
+        conn.execute("UPDATE users SET full_name = ?, username = ?, password = ? WHERE id = ?", (full_name, username, hashed_pw, user_id))
+    else:
+        conn.execute("UPDATE users SET full_name = ?, username = ? WHERE id = ?", (full_name, username, user_id))
+        
+    conn.commit()
+    conn.close()
+    
+    session["full_name"] = full_name
+    session["username"] = username
+    
+    return jsonify({"success": True, "message": "Profil yangilandi!"})
+
+
+# ── Reports ───────────────────────────────────────────────────────────────────
+
+@app.route("/api/reports")
+@login_required
+def reports():
+    user_id = session["user_id"]
+    role = session["role"]
+    conn = get_db()
+    
+    if role == "teacher":
+        # Group by subject and date
+        rows = conn.execute("""
+            SELECT s.subject, date(s.created_at) as dt, COUNT(r.id) as total
+            FROM attendance_sessions s
+            LEFT JOIN attendance_records r ON s.token = r.session_token
+            WHERE s.teacher_id = ?
+            GROUP BY s.subject, date(s.created_at)
+            ORDER BY date(s.created_at)
+        """, (user_id,)).fetchall()
+        
+        data = [{"subject": r["subject"] or "Noma'lum fan", "date": r["dt"], "total": r["total"]} for r in rows]
+    else:
+        # Student attended sessions
+        rows = conn.execute("""
+            SELECT s.subject, date(r.marked_at) as dt
+            FROM attendance_records r
+            JOIN attendance_sessions s ON r.session_token = s.token
+            WHERE r.student_id = ?
+            ORDER BY date(r.marked_at)
+        """, (user_id,)).fetchall()
+        
+        # Count by date
+        counts = {}
+        for r in rows:
+            dt = r["dt"]
+            counts[dt] = counts.get(dt, 0) + 1
+            
+        data = [{"date": k, "total": v} for k, v in counts.items()]
+        
+    conn.close()
+    return jsonify({"success": True, "data": data})
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

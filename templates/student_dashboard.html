@@ -5,6 +5,7 @@
   <title>Talaba — Aqilli Davomat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
@@ -12,16 +13,23 @@
     :root {
       --bg:#070c1b; --sidebar:#0b1022; --card:#0f1629;
       --border:#1a2540; --primary:#6366f1; --accent:#818cf8; --text:#e2e8f0; --muted:#64748b;
+      --icon-bg: rgba(99,102,241,.15);
+      --btn-text: #fff;
+    }
+    body.light-mode {
+      --bg: #f8fafc; --sidebar: #ffffff; --card: #ffffff;
+      --border: #e2e8f0; --primary: #4f46e5;
+      --accent: #6366f1; --text: #0f172a; --muted: #64748b;
+      --icon-bg: rgba(99,102,241,.1);
+      --btn-text: #fff;
     }
     body { background:var(--bg); color:var(--text); }
-    .md-main { margin-left:256px; }
-    @media(max-width:767px){ .md-main{ margin-left:0; } }
 
     /* Sidebar */
     #sidebar { background:var(--sidebar); border-right:1px solid var(--border); width:256px; }
     .nav-link { display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
-      color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:all .2s; }
-    .nav-link:hover { background:rgba(99,102,241,.1);color:#c7d2fe; }
+      color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:all .2s;cursor:pointer; }
+    .nav-link:hover { background:rgba(99,102,241,.1);color:var(--accent); }
     .nav-link.active { background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.25); }
     .nav-link i { width:18px;text-align:center;font-size:13px; }
 
@@ -30,14 +38,14 @@
     .card:hover { border-color:rgba(99,102,241,.3); }
 
     /* Buttons */
-    .btn-primary { background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:12px;
+    .btn-primary { background:linear-gradient(135deg,var(--primary),#4f46e5);color:var(--btn-text);border-radius:12px;
       font-weight:600;font-size:14px;padding:12px 24px;display:inline-flex;align-items:center;
       gap:8px;cursor:pointer;transition:all .2s;border:none; }
-    .btn-primary:hover { background:linear-gradient(135deg,#4f46e5,#4338ca);transform:translateY(-1px); }
-    .btn-outline { background:transparent;border:1px solid var(--border);color:var(--muted);
+    .btn-primary:hover { opacity:0.9;transform:translateY(-1px); }
+    .btn-outline { background:transparent;border:1px solid var(--border);color:var(--text);
       border-radius:10px;font-size:13px;font-weight:500;padding:8px 16px;display:inline-flex;
       align-items:center;gap:6px;cursor:pointer;transition:all .2s;width:100%;justify-content:center; }
-    .btn-outline:hover { border-color:var(--accent);color:#c7d2fe; }
+    .btn-outline:hover { border-color:var(--accent);color:var(--accent); }
 
     /* QR scanner overrides */
     #qr-reader { border:none !important; }
@@ -54,17 +62,17 @@
     }
     .scan-line {
       position:absolute; left:12%; right:12%; height:2px; top:4%;
-      background:linear-gradient(90deg,transparent,#6366f1,#a5b4fc,#6366f1,transparent);
+      background:linear-gradient(90deg,transparent,var(--primary),#a5b4fc,var(--primary),transparent);
       box-shadow:0 0 12px 2px rgba(99,102,241,.7);
       animation:scan-line 2.2s ease-in-out infinite;
       border-radius:2px;
     }
     /* Corner markers */
     .corner { position:absolute;width:22px;height:22px; }
-    .corner-tl { top:8px;left:8px;border-top:2px solid #6366f1;border-left:2px solid #6366f1;border-radius:4px 0 0 0; }
-    .corner-tr { top:8px;right:8px;border-top:2px solid #6366f1;border-right:2px solid #6366f1;border-radius:0 4px 0 0; }
-    .corner-bl { bottom:8px;left:8px;border-bottom:2px solid #6366f1;border-left:2px solid #6366f1;border-radius:0 0 0 4px; }
-    .corner-br { bottom:8px;right:8px;border-bottom:2px solid #6366f1;border-right:2px solid #6366f1;border-radius:0 0 4px 0; }
+    .corner-tl { top:8px;left:8px;border-top:2px solid var(--primary);border-left:2px solid var(--primary);border-radius:4px 0 0 0; }
+    .corner-tr { top:8px;right:8px;border-top:2px solid var(--primary);border-right:2px solid var(--primary);border-radius:0 4px 0 0; }
+    .corner-bl { bottom:8px;left:8px;border-bottom:2px solid var(--primary);border-left:2px solid var(--primary);border-radius:0 0 0 4px; }
+    .corner-br { bottom:8px;right:8px;border-bottom:2px solid var(--primary);border-right:2px solid var(--primary);border-radius:0 0 4px 0; }
 
     /* GPS badge */
     .gps-badge { display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
@@ -81,10 +89,12 @@
     .anim-spin       { animation:spin-slow 1.8s linear infinite; }
 
     /* Field */
-    .field { background:#0a1020;border:1px solid var(--border);border-radius:10px;
+    .field { background:transparent;border:1px solid var(--border);border-radius:10px;
       color:var(--text);font-size:13px;padding:9px 12px;font-family:monospace;outline:none;
       transition:border-color .2s;width:100%; }
     .field:focus { border-color:var(--primary); }
+
+    .text-dynamic { color: var(--text); }
   </style>
 </head>
 
@@ -99,34 +109,35 @@
         <i class="fa-solid fa-graduation-cap text-white" style="font-size:14px"></i>
       </div>
       <div>
-        <p class="font-bold text-white text-sm leading-tight">Aqilli Davomat</p>
-        <p class="text-xs" style="color:var(--accent)">Talaba paneli</p>
+        <p class="font-bold text-dynamic text-sm leading-tight">Aqilli Davomat</p>
+        <p class="text-xs" style="color:var(--accent)" data-i18n="student_panel">Talaba paneli</p>
       </div>
     </div>
 
     <!-- Nav -->
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-      <p class="text-xs uppercase tracking-widest px-3 mb-2" style="color:var(--muted)">Menyu</p>
-      <a href="/student_dashboard" class="nav-link active">
-        <i class="fa-solid fa-house-chimney"></i><span>Bosh sahifa</span></a>
-      <a href="#scanner-section" class="nav-link"
-         onclick="document.getElementById('scanner-section').scrollIntoView({behavior:'smooth'});return false">
-        <i class="fa-solid fa-qrcode"></i><span>QR Skaner</span></a>
-      <a href="#" class="nav-link">
-        <i class="fa-solid fa-clock-rotate-left"></i><span>Tarix</span></a>
-      <a href="#" class="nav-link">
-        <i class="fa-solid fa-gear"></i><span>Sozlamalar</span></a>
+      <p class="text-xs uppercase tracking-widest px-3 mb-2" style="color:var(--muted)" data-i18n="menu">Menyu</p>
+      <a id="nav-dashboard" onclick="showSection('dashboard')" class="nav-link active">
+        <i class="fa-solid fa-house-chimney"></i><span data-i18n="home">Bosh sahifa</span></a>
+      <a id="nav-qr" onclick="showSection('dashboard', true)" class="nav-link">
+        <i class="fa-solid fa-qrcode"></i><span data-i18n="qr_menu">Davomat QR</span></a>
+      <a id="nav-report" onclick="showSection('report')" class="nav-link">
+        <i class="fa-solid fa-chart-column"></i><span data-i18n="reports">Hisobot</span></a>
+      <a id="nav-settings" onclick="showSection('settings')" class="nav-link">
+        <i class="fa-solid fa-gear"></i><span data-i18n="settings">Sozlamalar</span></a>
+      <a id="nav-profile" onclick="showSection('profile')" class="nav-link">
+        <i class="fa-solid fa-user"></i><span data-i18n="profile">Profil</span></a>
     </nav>
 
     <!-- User -->
     <div class="px-3 py-4" style="border-top:1px solid var(--border)">
-      <div class="flex items-center gap-3 px-3 py-3 rounded-xl" style="background:rgba(99,102,241,.08);border:1px solid var(--border)">
+      <div class="flex items-center gap-3 px-3 py-3 rounded-xl" style="background:var(--icon-bg);border:1px solid var(--border)">
         <div class="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center shrink-0">
           <i class="fa-solid fa-user text-white" style="font-size:11px"></i>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-white truncate">{{ full_name }}</p>
-          <p class="text-xs" style="color:var(--accent)">Talaba</p>
+          <p class="text-xs font-semibold text-dynamic truncate profile-name-display">{{ full_name }}</p>
+          <p class="text-xs" style="color:var(--accent)" data-i18n="student">Talaba</p>
         </div>
         <a href="/logout" title="Chiqish" style="color:var(--muted)" class="transition-colors"
            onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--muted)'">
@@ -141,149 +152,205 @@
        onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')"></div>
 
   <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
-  <div class="flex-1 flex flex-col min-h-screen md-main">
+  <div class="flex-1 flex flex-col min-h-screen md:ml-64">
 
     <!-- Mobile topbar -->
     <header class="md:hidden flex items-center gap-4 px-5 py-4 anim-slide-down"
             style="background:var(--sidebar);border-bottom:1px solid var(--border)">
       <button onclick="document.getElementById('sidebar').classList.remove('-translate-x-full');document.getElementById('overlay').classList.remove('hidden')"
-              class="text-slate-400 hover:text-white transition-colors">
+              class="text-slate-400 hover:text-dynamic transition-colors">
         <i class="fa-solid fa-bars text-lg"></i>
       </button>
-      <p class="font-semibold text-white text-sm">Aqilli Davomat</p>
+      <p class="font-semibold text-dynamic text-sm">Aqilli Davomat</p>
     </header>
 
-    <main class="flex-1 px-6 py-8 max-w-3xl w-full mx-auto anim-pop-in">
+    <main class="flex-1 px-6 py-8 max-w-3xl w-full mx-auto anim-pop-in relative">
 
-      <!-- Welcome -->
-      <div class="flex items-center gap-4 mb-8">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl"
-             style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 0 30px rgba(99,102,241,.3)">🎓</div>
-        <div>
-          <h1 class="text-xl font-extrabold text-white">Xush kelibsiz, <span style="color:var(--accent)">{{ full_name }}</span>!</h1>
-          <p class="text-sm" style="color:var(--muted)">Siz <span style="color:var(--accent)" class="font-medium">talaba</span> sifatida kirdingiz</p>
+      <!-- ================= DASHBOARD SECTION ================= -->
+      <div id="sec-dashboard" class="section block">
+        <!-- Welcome -->
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl"
+               style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 0 30px rgba(99,102,241,.3)">🎓</div>
+          <div>
+            <h1 class="text-xl font-extrabold text-dynamic" data-i18n="welcome">Xush kelibsiz, <span style="color:var(--accent)" class="profile-name-display">{{ full_name }}</span>!</h1>
+            <p class="text-sm" style="color:var(--muted)" data-i18n="student_logged">Siz <span style="color:var(--accent)" class="font-medium">talaba</span> sifatida kirdingiz</p>
+          </div>
+        </div>
+
+        <!-- Scanner card -->
+        <div id="scanner-section" class="card overflow-hidden mb-5" style="border-color:rgba(99,102,241,.25)">
+
+          <!-- Card header -->
+          <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid var(--border)">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:var(--icon-bg)">
+                <i class="fa-solid fa-qrcode" style="color:var(--accent);font-size:12px"></i>
+              </div>
+              <span class="font-semibold text-dynamic text-sm" data-i18n="qr_scan">QR Skanerlash</span>
+            </div>
+            <!-- GPS badge -->
+            <div id="gps-badge" class="gps-badge" style="background:#111827;color:var(--muted)">
+              <i class="fa-solid fa-location-dot" style="font-size:11px"></i>
+              <span id="gps-label" data-i18n="gps_unknown">GPS aniqlanmagan</span>
+            </div>
+          </div>
+
+          <!-- States -->
+          <div class="p-8">
+
+            <!-- IDLE -->
+            <div id="state-idle" class="text-center">
+              <div class="text-5xl mb-5">📱</div>
+              <p class="font-semibold text-dynamic mb-1" data-i18n="record_attendance">Davomatni qayd etish</p>
+              <p class="text-sm mb-8" style="color:var(--muted)" data-i18n="record_hint">Kamera orqali o'qituvchi QR kodini skaner qiling</p>
+              <button id="scan-btn" class="btn-primary mx-auto" onclick="startScanner()">
+                <i class="fa-solid fa-camera"></i> <span data-i18n="mark_attendance">Davomatni Belgilash</span>
+              </button>
+            </div>
+
+            <!-- SCANNING -->
+            <div id="state-scanning" class="hidden">
+              <!-- Camera with scan overlay -->
+              <div class="relative rounded-2xl overflow-hidden" style="background:#070c1b;min-height:260px">
+                <!-- Corner markers -->
+                <div class="corner corner-tl z-10"></div>
+                <div class="corner corner-tr z-10"></div>
+                <div class="corner corner-bl z-10"></div>
+                <div class="corner corner-br z-10"></div>
+                <!-- Scanning line -->
+                <div class="scan-line z-10"></div>
+                <!-- Camera feed -->
+                <div id="qr-reader"></div>
+              </div>
+              <p class="text-center text-sm mt-3" style="color:var(--muted)" data-i18n="hold_camera">QR kodni kamera oldiga tutib turing…</p>
+              <button class="btn-outline mt-3" onclick="stopScanner();showState('idle')">
+                <i class="fa-solid fa-xmark"></i> <span data-i18n="cancel">Bekor qilish</span>
+              </button>
+            </div>
+
+            <!-- VERIFYING -->
+            <div id="state-verifying" class="hidden text-center py-8">
+              <i class="fa-solid fa-circle-notch anim-spin text-4xl mb-4" style="color:var(--accent)"></i>
+              <p class="font-semibold text-dynamic" data-i18n="checking_gps">GPS va token tekshirilmoqda…</p>
+              <p class="text-sm mt-1" style="color:var(--muted)" data-i18n="wait">Bir soniya kuting</p>
+              <p id="verifying-hint" class="hidden text-xs mt-4" style="color:var(--muted)">
+                <span data-i18n="taking_long">Uzoq kutayapsizmi? Internet yoki GPS muammosi bo'lishi mumkin.</span><br/>
+                <button onclick="showState('idle')" class="text-indigo-400 hover:text-indigo-300 underline mt-1" data-i18n="go_back">Orqaga qaytish</button>
+              </p>
+            </div>
+
+            <!-- SUCCESS -->
+            <div id="state-success" class="hidden text-center py-6 anim-fade-in">
+              <div class="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center"
+                   style="background:rgba(16,185,129,.12);border:2px solid rgba(16,185,129,.4)">
+                <i class="fa-solid fa-circle-check text-4xl text-emerald-400"></i>
+              </div>
+              <h2 class="text-xl font-bold text-dynamic mb-2" data-i18n="success_record">Davomat muvaffaqiyatli qayd etildi!</h2>
+              <p id="success-detail" class="text-sm mb-5" style="color:var(--muted)"></p>
+              <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-emerald-500"
+                   style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25)">
+                <i class="fa-solid fa-clock text-xs"></i> <span id="success-time"></span>
+              </div>
+              <div class="mt-6"><button class="btn-outline" style="max-width:180px;margin:0 auto" onclick="showState('idle')">
+                <i class="fa-solid fa-check"></i> <span data-i18n="close">Yopish</span></button></div>
+            </div>
+
+            <!-- ERROR -->
+            <div id="state-error" class="hidden text-center py-6 anim-fade-in">
+              <div class="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center"
+                   style="background:rgba(239,68,68,.1);border:2px solid rgba(239,68,68,.35)">
+                <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500"></i>
+              </div>
+              <h2 class="text-xl font-bold text-dynamic mb-2" data-i18n="error_occurred">Xatolik yuz berdi</h2>
+              <p id="error-msg" class="text-sm mb-6 max-w-xs mx-auto text-red-500"></p>
+              <button class="btn-primary mx-auto" onclick="showState('idle')">
+                <i class="fa-solid fa-rotate-right"></i> <span data-i18n="retry">Qayta urinish</span>
+              </button>
+            </div>
+
+          </div><!-- /states -->
+        </div><!-- /scanner card -->
+
+        <!-- Manual token -->
+        <div class="card px-6 py-5">
+          <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted)">
+            <i class="fa-solid fa-keyboard mr-1"></i> <span data-i18n="manual_token">Qo'lda token kiritish</span>
+          </p>
+          <div class="flex gap-3">
+            <input id="manual-token" type="text" class="field flex-1" placeholder="32 belgili token…" data-i18n-placeholder="token_placeholder"/>
+            <button id="manual-submit" onclick="manualSubmit()"
+                    class="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                    style="background:var(--primary)" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+              <span data-i18n="send">Yuborish</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Stats -->
-      <div class="grid grid-cols-3 gap-4 mb-8">
-        {% for label, icon in [("Jami darslar","fa-calendar-days"),("Keldi","fa-circle-check"),("Davomat %","fa-chart-pie")] %}
-        <div class="card p-5 transition-all">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:rgba(99,102,241,.15)">
-            <i class="fa-solid {{ icon }}" style="color:var(--accent);font-size:13px"></i>
-          </div>
-          <p class="text-2xl font-bold text-white">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">{{ label }}</p>
+      <!-- ================= REPORTS SECTION ================= -->
+      <div id="sec-report" class="section hidden">
+        <h2 class="text-2xl font-bold text-dynamic mb-6" data-i18n="reports">Hisobot</h2>
+        <div class="card p-6">
+          <p class="text-sm mb-4" style="color:var(--muted)" data-i18n="student_report_desc">Sizning davomat tarixingiz</p>
+          <canvas id="reportsChart" width="400" height="200"></canvas>
         </div>
-        {% endfor %}
       </div>
 
-      <!-- Scanner card -->
-      <div id="scanner-section" class="card overflow-hidden mb-5" style="border-color:rgba(99,102,241,.25)">
-
-        <!-- Card header -->
-        <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid var(--border)">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(99,102,241,.15)">
-              <i class="fa-solid fa-qrcode" style="color:var(--accent);font-size:12px"></i>
+      <!-- ================= SETTINGS SECTION ================= -->
+      <div id="sec-settings" class="section hidden">
+        <h2 class="text-2xl font-bold text-dynamic mb-6" data-i18n="settings">Sozlamalar</h2>
+        
+        <div class="card p-6 mb-6">
+          <h3 class="text-lg font-semibold text-dynamic mb-4" data-i18n="system_settings">Tizim sozlamalari</h3>
+          
+          <div class="flex items-center justify-between mb-4 border-b pb-4" style="border-color:var(--border)">
+            <div>
+              <p class="font-medium text-dynamic" data-i18n="theme">Rejim</p>
+              <p class="text-xs" style="color:var(--muted)" data-i18n="theme_desc">Tungi yoki kunduzgi rejimni tanlang</p>
             </div>
-            <span class="font-semibold text-white text-sm">QR Skanerlash</span>
+            <select id="theme-select" class="field w-40" onchange="changeTheme(this.value)">
+              <option value="dark" data-i18n="dark_mode">Tungi rejim</option>
+              <option value="light" data-i18n="light_mode">Kunduzgi rejim</option>
+            </select>
           </div>
-          <!-- GPS badge -->
-          <div id="gps-badge" class="gps-badge" style="background:#111827;color:var(--muted)">
-            <i class="fa-solid fa-location-dot" style="font-size:11px"></i>
-            <span id="gps-label">GPS aniqlanmagan</span>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-dynamic" data-i18n="language">Til</p>
+              <p class="text-xs" style="color:var(--muted)" data-i18n="language_desc">Tizim tilini tanlang</p>
+            </div>
+            <select id="lang-select" class="field w-40" onchange="changeLang(this.value)">
+              <option value="uz">O'zbek</option>
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </div>
+      </div>
 
-        <!-- States -->
-        <div class="p-8">
-
-          <!-- IDLE -->
-          <div id="state-idle" class="text-center">
-            <div class="text-5xl mb-5">📱</div>
-            <p class="font-semibold text-white mb-1">Davomatni qayd etish</p>
-            <p class="text-sm mb-8" style="color:var(--muted)">Kamera orqali o'qituvchi QR kodini skaner qiling</p>
-            <button id="scan-btn" class="btn-primary mx-auto" onclick="startScanner()">
-              <i class="fa-solid fa-camera"></i> Davomatni Belgilash
+      <!-- ================= PROFILE SECTION ================= -->
+      <div id="sec-profile" class="section hidden">
+        <h2 class="text-2xl font-bold text-dynamic mb-6" data-i18n="profile">Profil</h2>
+        <div class="card p-6 max-w-md">
+          <form id="profile-form" onsubmit="updateProfile(event)">
+            <div class="mb-4">
+              <label class="block text-xs uppercase tracking-widest mb-1 text-dynamic" data-i18n="full_name_label">To'liq ism</label>
+              <input type="text" id="prof-fullname" class="field" value="{{ full_name }}" required>
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs uppercase tracking-widest mb-1 text-dynamic" data-i18n="username_label">Login</label>
+              <input type="text" id="prof-username" class="field" value="{{ username }}" required>
+            </div>
+            <div class="mb-6">
+              <label class="block text-xs uppercase tracking-widest mb-1 text-dynamic" data-i18n="new_password">Yangi parol</label>
+              <input type="password" id="prof-password" class="field" placeholder="Bo'sh qolsa o'zgarmaydi">
+            </div>
+            <button type="submit" class="btn-primary w-full justify-center">
+              <i class="fa-solid fa-save"></i> <span data-i18n="save_changes">Saqlash</span>
             </button>
-          </div>
-
-          <!-- SCANNING -->
-          <div id="state-scanning" class="hidden">
-            <!-- Camera with scan overlay -->
-            <div class="relative rounded-2xl overflow-hidden" style="background:#070c1b;min-height:260px">
-              <!-- Corner markers -->
-              <div class="corner corner-tl z-10"></div>
-              <div class="corner corner-tr z-10"></div>
-              <div class="corner corner-bl z-10"></div>
-              <div class="corner corner-br z-10"></div>
-              <!-- Scanning line -->
-              <div class="scan-line z-10"></div>
-              <!-- Camera feed -->
-              <div id="qr-reader"></div>
-            </div>
-            <p class="text-center text-sm mt-3" style="color:var(--muted)">QR kodni kamera oldiga tutib turing…</p>
-            <button class="btn-outline mt-3" onclick="stopScanner();showState('idle')">
-              <i class="fa-solid fa-xmark"></i> Bekor qilish
-            </button>
-          </div>
-
-          <!-- VERIFYING -->
-          <div id="state-verifying" class="hidden text-center py-8">
-            <i class="fa-solid fa-circle-notch anim-spin text-4xl mb-4" style="color:var(--accent)"></i>
-            <p class="font-semibold text-white">GPS va token tekshirilmoqda…</p>
-            <p class="text-sm mt-1" style="color:var(--muted)">Bir soniya kuting</p>
-            <p id="verifying-hint" class="hidden text-xs mt-4 text-slate-500">
-              Uzoq kutayapsizmi? Internet yoki GPS muammosi bo'lishi mumkin.<br/>
-              <button onclick="showState('idle')" class="text-indigo-400 hover:text-indigo-300 underline mt-1">Orqaga qaytish</button>
-            </p>
-          </div>
-
-          <!-- SUCCESS -->
-          <div id="state-success" class="hidden text-center py-6 anim-fade-in">
-            <div class="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center"
-                 style="background:rgba(16,185,129,.12);border:2px solid rgba(16,185,129,.4)">
-              <i class="fa-solid fa-circle-check text-4xl text-emerald-400"></i>
-            </div>
-            <h2 class="text-xl font-bold text-white mb-2">Davomat muvaffaqiyatli qayd etildi!</h2>
-            <p id="success-detail" class="text-sm mb-5" style="color:var(--muted)"></p>
-            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-emerald-400"
-                 style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25)">
-              <i class="fa-solid fa-clock text-xs"></i> <span id="success-time"></span>
-            </div>
-            <div class="mt-6"><button class="btn-outline" style="max-width:180px;margin:0 auto" onclick="showState('idle')">
-              <i class="fa-solid fa-check"></i> Yopish</button></div>
-          </div>
-
-          <!-- ERROR -->
-          <div id="state-error" class="hidden text-center py-6 anim-fade-in">
-            <div class="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center"
-                 style="background:rgba(239,68,68,.1);border:2px solid rgba(239,68,68,.35)">
-              <i class="fa-solid fa-triangle-exclamation text-4xl text-red-400"></i>
-            </div>
-            <h2 class="text-xl font-bold text-white mb-2">Xatolik yuz berdi</h2>
-            <p id="error-msg" class="text-sm mb-6 max-w-xs mx-auto" style="color:#f87171"></p>
-            <button class="btn-primary mx-auto" onclick="showState('idle')">
-              <i class="fa-solid fa-rotate-right"></i> Qayta urinish
-            </button>
-          </div>
-
-        </div><!-- /states -->
-      </div><!-- /scanner card -->
-
-      <!-- Manual token -->
-      <div class="card px-6 py-5">
-        <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted)">
-          <i class="fa-solid fa-keyboard mr-1"></i> Qo'lda token kiritish
-        </p>
-        <div class="flex gap-3">
-          <input id="manual-token" type="text" class="field flex-1" placeholder="32 belgili token…"/>
-          <button id="manual-submit" onclick="manualSubmit()"
-                  class="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-                  style="background:#6366f1" onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'">
-            Yuborish
-          </button>
+            <p id="prof-msg" class="mt-3 text-sm text-center hidden"></p>
+          </form>
         </div>
       </div>
 
@@ -291,22 +358,225 @@
   </div>
 
   <script>
-    /* ── DOM ── */
-    const $ = id => document.getElementById(id);
+    /* ── Localization ── */
+    const translations = {
+      uz: {
+        student_panel: "Talaba paneli", menu: "Menyu", home: "Bosh sahifa", reports: "Hisobot", 
+        settings: "Sozlamalar", profile: "Profil", student: "Talaba", welcome: "Xush kelibsiz, ",
+        student_logged: "Siz talaba sifatida kirdingiz", qr_scan: "QR Skanerlash", gps_unknown: "GPS aniqlanmagan",
+        record_attendance: "Davomatni qayd etish", record_hint: "Kamera orqali o'qituvchi QR kodini skaner qiling",
+        mark_attendance: "Davomatni Belgilash", hold_camera: "QR kodni kamera oldiga tutib turing…",
+        cancel: "Bekor qilish", checking_gps: "GPS va token tekshirilmoqda…", wait: "Bir soniya kuting",
+        taking_long: "Uzoq kutayapsizmi? Internet yoki GPS muammosi bo'lishi mumkin.", go_back: "Orqaga qaytish",
+        success_record: "Davomat muvaffaqiyatli qayd etildi!", close: "Yopish", error_occurred: "Xatolik yuz berdi",
+        retry: "Qayta urinish", manual_token: "Qo'lda token kiritish", token_placeholder: "32 belgili token…",
+        send: "Yuborish", student_report_desc: "Sizning davomat tarixingiz", system_settings: "Tizim sozlamalari", theme: "Rejim",
+        theme_desc: "Tungi yoki kunduzgi rejimni tanlang", dark_mode: "Tungi rejim", light_mode: "Kunduzgi rejim",
+        language: "Til", language_desc: "Tizim tilini tanlang", full_name_label: "To'liq ism", username_label: "Login",
+        new_password: "Yangi parol (ixtiyoriy)", save_changes: "Saqlash", qr_menu: "Davomat QR"
+      },
+      ru: {
+        student_panel: "Панель студента", menu: "Меню", home: "Главная", reports: "Отчеты", 
+        settings: "Настройки", profile: "Профиль", student: "Студент", welcome: "Добро пожаловать, ",
+        student_logged: "Вы вошли как студент", qr_scan: "Сканирование QR", gps_unknown: "GPS не определен",
+        record_attendance: "Отметить посещаемость", record_hint: "Отсканируйте QR код учителя через камеру",
+        mark_attendance: "Отметиться", hold_camera: "Держите QR код перед камерой…",
+        cancel: "Отмена", checking_gps: "Проверка GPS и токена…", wait: "Подождите секунду",
+        taking_long: "Долго ждете? Возможны проблемы с интернетом или GPS.", go_back: "Вернуться назад",
+        success_record: "Посещаемость успешно отмечена!", close: "Закрыть", error_occurred: "Произошла ошибка",
+        retry: "Повторить", manual_token: "Ввести токен вручную", token_placeholder: "32-символьный токен…",
+        send: "Отправить", student_report_desc: "Ваша история посещаемости", system_settings: "Системные настройки", theme: "Тема",
+        theme_desc: "Выберите темную или светлую тему", dark_mode: "Темная", light_mode: "Светлая",
+        language: "Язык", language_desc: "Выберите язык системы", full_name_label: "Полное имя", username_label: "Логин",
+        new_password: "Новый пароль", save_changes: "Сохранить", qr_menu: "QR Посещаемость"
+      },
+      en: {
+        student_panel: "Student Panel", menu: "Menu", home: "Home", reports: "Reports", 
+        settings: "Settings", profile: "Profile", student: "Student", welcome: "Welcome, ",
+        student_logged: "You are logged in as a student", qr_scan: "QR Scanning", gps_unknown: "GPS not detected",
+        record_attendance: "Record Attendance", record_hint: "Scan the teacher's QR code via camera",
+        mark_attendance: "Mark Attendance", hold_camera: "Hold the QR code in front of the camera...",
+        cancel: "Cancel", checking_gps: "Checking GPS and token...", wait: "Wait a second",
+        taking_long: "Waiting too long? There might be internet or GPS issues.", go_back: "Go back",
+        success_record: "Attendance recorded successfully!", close: "Close", error_occurred: "An error occurred",
+        retry: "Retry", manual_token: "Enter token manually", token_placeholder: "32-character token...",
+        send: "Submit", student_report_desc: "Your attendance history", system_settings: "System Settings", theme: "Theme",
+        theme_desc: "Select dark or light mode", dark_mode: "Dark Mode", light_mode: "Light Mode",
+        language: "Language", language_desc: "Select system language", full_name_label: "Full Name", username_label: "Username",
+        new_password: "New Password", save_changes: "Save Changes", qr_menu: "Attendance QR"
+      }
+    };
 
-    /* ── States ── */
+    function applyTranslations() {
+      const lang = localStorage.getItem('lang') || 'uz';
+      document.getElementById('lang-select').value = lang;
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang][key]) el.innerHTML = translations[lang][key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[lang][key]) el.placeholder = translations[lang][key];
+      });
+    }
+
+    function changeLang(lang) {
+      localStorage.setItem('lang', lang);
+      applyTranslations();
+      if(reportsLoaded) loadReports();
+    }
+
+    /* ── Theme ── */
+    function applyTheme() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.getElementById('theme-select').value = theme;
+      if (theme === 'light') document.body.classList.add('light-mode');
+      else document.body.classList.remove('light-mode');
+      if(reportsLoaded) loadReports();
+    }
+
+    function changeTheme(theme) {
+      localStorage.setItem('theme', theme);
+      applyTheme();
+    }
+
+    /* ── Sections ── */
+    let reportsLoaded = false;
+    let chartInstance = null;
+
+    function showSection(id, scrollQR = false) {
+      document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+      document.getElementById('sec-' + id).classList.remove('hidden');
+      
+      document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+      const navBtn = document.getElementById('nav-' + id);
+      if(navBtn) navBtn.classList.add('active');
+      
+      if(scrollQR) {
+          const qrBtn = document.getElementById('nav-qr');
+          if(qrBtn) qrBtn.classList.add('active');
+          if(navBtn) navBtn.classList.remove('active');
+      }
+
+      if (id === 'report') {
+        loadReports();
+      }
+      if(scrollQR && document.getElementById('scanner-section')) {
+          document.getElementById('scanner-section').scrollIntoView({behavior: 'smooth'});
+      }
+    }
+
+    /* ── Profile Update ── */
+    async function updateProfile(e) {
+      e.preventDefault();
+      const fn = document.getElementById('prof-fullname').value;
+      const un = document.getElementById('prof-username').value;
+      const pw = document.getElementById('prof-password').value;
+      const msg = document.getElementById('prof-msg');
+      msg.classList.remove('hidden');
+      msg.textContent = "Kuting..."; msg.style.color = "var(--muted)";
+      
+      try {
+        const res = await fetch('/api/update_profile', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({full_name: fn, username: un, password: pw})
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.textContent = data.message; msg.style.color = "#10b981";
+          document.querySelectorAll('.profile-name-display').forEach(el => el.textContent = fn);
+          document.getElementById('prof-password').value = "";
+        } else {
+          msg.textContent = data.error; msg.style.color = "#ef4444";
+        }
+      } catch (err) {
+        msg.textContent = "Xatolik yuz berdi."; msg.style.color = "#ef4444";
+      }
+    }
+
+    /* ── Reports (Chart.js) ── */
+    async function loadReports() {
+      reportsLoaded = true;
+      try {
+        const res = await fetch('/api/reports');
+        const data = await res.json();
+        if (data.success) {
+          renderChart(data.data);
+        }
+      } catch (e) {
+        console.error("Error loading reports", e);
+      }
+    }
+
+    function renderChart(data) {
+      const ctx = document.getElementById('reportsChart').getContext('2d');
+      const isLight = document.body.classList.contains('light-mode');
+      const textColor = isLight ? '#0f172a' : '#e2e8f0';
+      const gridColor = isLight ? '#e2e8f0' : '#1a2540';
+      
+      const labels = data.map(d => d.date);
+      const values = data.map(d => d.total);
+
+      if (chartInstance) chartInstance.destroy();
+
+      const lang = localStorage.getItem('lang') || 'uz';
+      const dsLabel = lang === 'en' ? 'Classes attended' : (lang === 'ru' ? 'Посещено занятий' : 'Qatnashgan darslar');
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: dsLabel,
+            data: values,
+            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+            borderColor: 'rgba(16, 185, 129, 1)',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: textColor } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: textColor, stepSize: 1 },
+              grid: { color: gridColor }
+            },
+            x: {
+              ticks: { color: textColor },
+              grid: { color: gridColor }
+            }
+          }
+        }
+      });
+    }
+
+    /* ── Init ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      applyTheme();
+      applyTranslations();
+      getGPS().catch(()=>{});
+    });
+
+    /* ── Existing GPS & Scanner Logic ── */
+    const $ = id => document.getElementById(id);
     const STATES = ["idle","scanning","verifying","success","error"];
     function showState(s){ STATES.forEach(n=>$("state-"+n).classList.toggle("hidden", n!==s)); }
 
-    /* ── GPS ── */
     let cachedGPS = null;
     function setGPSBadge(state, txt){
       const badge = $("gps-badge");
       const styles = {
         unknown: {bg:"#111827",color:"var(--muted)"},
         getting: {bg:"rgba(245,158,11,.12)",color:"#fbbf24"},
-        ok:      {bg:"rgba(16,185,129,.12)",color:"#34d399"},
-        error:   {bg:"rgba(239,68,68,.12)", color:"#f87171"},
+        ok:      {bg:"rgba(16,185,129,.12)",color:"#10b981"},
+        error:   {bg:"rgba(239,68,68,.12)", color:"#ef4444"},
       };
       const s = styles[state]||styles.unknown;
       badge.style.background = s.bg; badge.style.color = s.color;
@@ -316,18 +586,22 @@
     function getGPS(){
       return new Promise((res,rej)=>{
         if(!navigator.geolocation){ rej(new Error("Brauzeringiz GPS ni qo'llab-quvvatlamaydi.")); return; }
-        setGPSBadge("getting","GPS aniqlanmoqda…");
+        const lang = localStorage.getItem('lang') || 'uz';
+        const getting = lang==='en'?"Getting GPS...":(lang==='ru'?"Определение GPS...":"GPS aniqlanmoqda…");
+        const ok = lang==='en'?"GPS ready":(lang==='ru'?"GPS готов":"GPS tayyor");
+        const err = lang==='en'?"GPS denied":(lang==='ru'?"GPS отказан":"GPS ruxsati berilmadi");
+        
+        setGPSBadge("getting", getting);
         navigator.geolocation.getCurrentPosition(
           p=>{ cachedGPS={lat:p.coords.latitude,lon:p.coords.longitude};
-            setGPSBadge("ok",`GPS tayyor (±${Math.round(p.coords.accuracy)}m)`); res(cachedGPS); },
-          ()=>{ setGPSBadge("error","GPS ruxsati berilmadi");
-            rej(new Error("GPS ruxsati berilmadi. Brauzer sozlamalarini tekshiring.")); },
+            setGPSBadge("ok",`${ok} (±${Math.round(p.coords.accuracy)}m)`); res(cachedGPS); },
+          ()=>{ setGPSBadge("error",err);
+            rej(new Error(err)); },
           {timeout:10000,enableHighAccuracy:true}
         );
       });
     }
 
-    /* ── QR Scanner ── */
     let scanner = null;
     let scannerActive = false;
 
@@ -337,15 +611,9 @@
       scanner = new Html5Qrcode("qr-reader");
       scannerActive = true;
 
-      // Try environment camera with zoom constraint for mobile
-      const constraints = {
-        facingMode: "environment",
-        advanced: [{ zoom: 1.0 }]
-      };
+      const constraints = { facingMode: "environment", advanced: [{ zoom: 1.0 }] };
       const config = {
-        fps: 15,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
+        fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0,
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
       };
 
@@ -359,14 +627,12 @@
             await submitAttendance(extractToken(decoded), gps);
           }, ()=>{});
 
-        // After camera starts, try to apply zoom=1 to bring focus closer
         try{
           const track = scanner.getRunningTrackCameraCapabilities();
           if(track && track.zoomFeature && track.zoomFeature().isSupported()){
             await track.zoomFeature().apply(1.0);
           }
         }catch(_){}
-
       }catch(e){
         scannerActive = false;
         showState("idle");
@@ -386,12 +652,10 @@
       return m?m[1]:t.trim();
     }
 
-    /* ── Submit ── */
     async function submitAttendance(token, gps){
       if(!token){ showError("Token bo'sh. QR kodni qayta skaner qiling."); return; }
       showState("verifying");
 
-      // Show elapsed seconds counter after 3s
       let elapsedTimer = setTimeout(()=>{
         const el = document.getElementById("verifying-hint");
         if(el) el.classList.remove("hidden");
@@ -406,13 +670,14 @@
           signal: controller.signal
         });
         clearTimeout(timeoutId); clearTimeout(elapsedTimer);
-        // Guard against HTML error pages (e.g. Render 500)
         const text = await res.text();
         let d;
         try { d = JSON.parse(text); }
         catch { showError(`Server xatosi (${res.status}). Sahifani yangilab qayta urinib ko'ring.`); return; }
         if(d.success){
-          $("success-detail").textContent = `Masofa: ${d.distance}m`;
+          const lang = localStorage.getItem('lang') || 'uz';
+          const dist = lang==='en'?"Distance":(lang==='ru'?"Расстояние":"Masofa");
+          $("success-detail").textContent = `${dist}: ${d.distance}m`;
           $("success-time").textContent   = new Date().toLocaleTimeString("uz-UZ");
           showState("success");
         } else { showError(d.error||"Noma'lum xato."); }
@@ -426,7 +691,6 @@
     }
     function showError(msg){ $("error-msg").textContent=msg; showState("error"); }
 
-    /* ── Manual submit ── */
     async function manualSubmit(){
       const token=$("manual-token").value.trim();
       if(!token){ alert("Token kiriting."); return; }
@@ -434,7 +698,6 @@
       await submitAttendance(token,gps);
     }
 
-    /* ── URL token auto-fill ── */
     const urlToken=new URLSearchParams(location.search).get("token");
     if(urlToken){
       $("manual-token").value=urlToken;
@@ -442,8 +705,6 @@
       (async()=>{ let gps; try{gps=await getGPS();}catch(e){showError(e.message);return;} await submitAttendance(urlToken,gps); })();
     }
 
-    /* ── Pre-warm GPS ── */
-    getGPS().catch(()=>{});
   </script>
 </body>
 </html>

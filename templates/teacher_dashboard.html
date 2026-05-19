@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>O'qituvchi — Aqilli Davomat</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
@@ -12,6 +13,15 @@
       --bg: #070c1b; --sidebar: #0b1022; --card: #0f1629;
       --border: #1a2540; --primary: #6366f1; --primary-h: #4f46e5;
       --accent: #818cf8; --text: #e2e8f0; --muted: #64748b;
+      --icon-bg: rgba(99,102,241,.15);
+      --btn-text: #fff;
+    }
+    body.light-mode {
+      --bg: #f8fafc; --sidebar: #ffffff; --card: #ffffff;
+      --border: #e2e8f0; --primary: #4f46e5; --primary-h: #4338ca;
+      --accent: #6366f1; --text: #0f172a; --muted: #64748b;
+      --icon-bg: rgba(99,102,241,.1);
+      --btn-text: #fff;
     }
     body { background: var(--bg); color: var(--text); }
 
@@ -19,8 +29,8 @@
     #sidebar { background: var(--sidebar); border-right: 1px solid var(--border); width:256px; }
     .nav-link { display:flex; align-items:center; gap:12px; padding:9px 14px;
       border-radius:10px; color:var(--muted); font-size:14px; font-weight:500;
-      text-decoration:none; transition:all .2s; }
-    .nav-link:hover { background:rgba(99,102,241,.1); color:#c7d2fe; }
+      text-decoration:none; transition:all .2s; cursor:pointer; }
+    .nav-link:hover { background:rgba(99,102,241,.1); color:var(--accent); }
     .nav-link.active { background:rgba(99,102,241,.15); color:var(--accent);
       border:1px solid rgba(99,102,241,.25); }
     .nav-link i { width:18px; text-align:center; font-size:13px; }
@@ -30,20 +40,21 @@
     .card:hover { border-color:rgba(99,102,241,.35); }
 
     /* ── Inputs ── */
-    .field { background:#0a1020; border:1px solid var(--border); border-radius:10px;
+    .field { background:transparent; border:1px solid var(--border); border-radius:10px;
       color:var(--text); font-size:13px; padding:8px 12px; font-family:monospace; }
+    .field:focus { border-color:var(--primary); outline:none; }
 
     /* ── Buttons ── */
-    .btn-primary { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff;
+    .btn-primary { background:linear-gradient(135deg,var(--primary),var(--primary-h)); color:var(--btn-text);
       border-radius:12px; font-weight:600; font-size:14px; padding:10px 20px;
       display:inline-flex; align-items:center; gap:8px; cursor:pointer;
       transition:all .2s; border:none; }
-    .btn-primary:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); transform:translateY(-1px); }
+    .btn-primary:hover { opacity:0.9; transform:translateY(-1px); }
     .btn-primary:disabled { opacity:.45; cursor:not-allowed; transform:none; }
-    .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted);
+    .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text);
       border-radius:10px; font-size:13px; font-weight:500; padding:8px 16px;
       display:inline-flex; align-items:center; gap:6px; cursor:pointer; transition:all .2s; }
-    .btn-outline:hover { border-color:var(--accent); color:#c7d2fe; }
+    .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
     .btn-green { background:linear-gradient(135deg,#059669,#047857); color:#fff;
       border-radius:12px; font-weight:600; font-size:13px; padding:9px 16px;
       display:inline-flex; align-items:center; gap:7px; cursor:pointer;
@@ -52,8 +63,8 @@
 
     /* ── QR countdown circle ── */
     #countdown-svg { transform:rotate(-90deg); }
-    #countdown-track { fill:none; stroke:#1a2540; stroke-width:5; }
-    #countdown-progress { fill:none; stroke:#6366f1; stroke-width:5;
+    #countdown-track { fill:none; stroke:var(--border); stroke-width:5; }
+    #countdown-progress { fill:none; stroke:var(--primary); stroke-width:5;
       stroke-linecap:round; transition:stroke-dashoffset 1s linear, stroke .5s; }
 
     /* ── Animations ── */
@@ -69,6 +80,9 @@
     .dot { animation:dot-bounce 1.2s infinite; display:inline-block;
       width:7px;height:7px;border-radius:50%;background:#fff;margin:0 2px; }
     .dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+
+    /* specific text colors */
+    .text-dynamic { color: var(--text); }
   </style>
 </head>
 
@@ -84,33 +98,35 @@
         <i class="fa-solid fa-graduation-cap text-white" style="font-size:14px"></i>
       </div>
       <div>
-        <p class="font-bold text-white text-sm leading-tight">Aqilli Davomat</p>
-        <p class="text-xs" style="color:var(--accent)">O'qituvchi paneli</p>
+        <p class="font-bold text-dynamic text-sm leading-tight">Aqilli Davomat</p>
+        <p class="text-xs" style="color:var(--accent)" data-i18n="teacher_panel">O'qituvchi paneli</p>
       </div>
     </div>
 
     <!-- Nav -->
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-      <p class="text-xs uppercase tracking-widest px-3 mb-2" style="color:var(--muted)">Menyu</p>
-      <a href="/teacher_dashboard" class="nav-link active">
-        <i class="fa-solid fa-house-chimney"></i><span>Bosh sahifa</span></a>
-      <a href="#qr-section" class="nav-link" onclick="document.getElementById('qr-section').scrollIntoView({behavior:'smooth'});return false">
-        <i class="fa-solid fa-qrcode"></i><span>Davomat QR</span></a>
-      <a href="#" class="nav-link">
-        <i class="fa-solid fa-chart-column"></i><span>Hisobot</span></a>
-      <a href="#" class="nav-link">
-        <i class="fa-solid fa-gear"></i><span>Sozlamalar</span></a>
+      <p class="text-xs uppercase tracking-widest px-3 mb-2" style="color:var(--muted)" data-i18n="menu">Menyu</p>
+      <a id="nav-dashboard" onclick="showSection('dashboard')" class="nav-link active">
+        <i class="fa-solid fa-house-chimney"></i><span data-i18n="home">Bosh sahifa</span></a>
+      <a id="nav-qr" onclick="showSection('dashboard', true)" class="nav-link">
+        <i class="fa-solid fa-qrcode"></i><span data-i18n="qr_menu">Davomat QR</span></a>
+      <a id="nav-report" onclick="showSection('report')" class="nav-link">
+        <i class="fa-solid fa-chart-column"></i><span data-i18n="reports">Hisobot</span></a>
+      <a id="nav-settings" onclick="showSection('settings')" class="nav-link">
+        <i class="fa-solid fa-gear"></i><span data-i18n="settings">Sozlamalar</span></a>
+      <a id="nav-profile" onclick="showSection('profile')" class="nav-link">
+        <i class="fa-solid fa-user"></i><span data-i18n="profile">Profil</span></a>
     </nav>
 
     <!-- User -->
     <div class="px-3 py-4" style="border-top:1px solid var(--border)">
-      <div class="flex items-center gap-3 px-3 py-3 rounded-xl" style="background:rgba(99,102,241,.08);border:1px solid var(--border)">
+      <div class="flex items-center gap-3 px-3 py-3 rounded-xl" style="background:var(--icon-bg);border:1px solid var(--border)">
         <div class="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center shrink-0">
           <i class="fa-solid fa-user text-white" style="font-size:11px"></i>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-white truncate">{{ full_name }}</p>
-          <p class="text-xs" style="color:var(--accent)">O'qituvchi</p>
+          <p class="text-xs font-semibold text-dynamic truncate profile-name-display">{{ full_name }}</p>
+          <p class="text-xs" style="color:var(--accent)" data-i18n="teacher">O'qituvchi</p>
         </div>
         <a href="/logout" title="Chiqish" class="transition-colors" style="color:var(--muted)" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--muted)'">
           <i class="fa-solid fa-right-from-bracket text-sm"></i>
@@ -123,242 +139,518 @@
   <div id="overlay" class="hidden fixed inset-0 bg-black/60 z-40 md:hidden" onclick="closeSidebar()"></div>
 
   <!-- ══ MAIN ════════════════════════════════════════════════════════════ -->
-  <div class="flex-1 flex flex-col min-h-screen" style="margin-left:256px">
+  <div class="flex-1 flex flex-col min-h-screen md:ml-64">
 
     <!-- Mobile topbar -->
     <header class="md:hidden flex items-center gap-4 px-5 py-4 anim-slide-down" style="background:var(--sidebar);border-bottom:1px solid var(--border)">
-      <button onclick="openSidebar()" class="text-slate-400 hover:text-white transition-colors">
+      <button onclick="openSidebar()" class="text-slate-400 hover:text-dynamic transition-colors">
         <i class="fa-solid fa-bars text-lg"></i>
       </button>
-      <p class="font-semibold text-white text-sm">Aqilli Davomat</p>
+      <p class="font-semibold text-dynamic text-sm">Aqilli Davomat</p>
     </header>
 
-    <main class="flex-1 px-6 py-8 max-w-5xl w-full mx-auto anim-pop-in">
+    <main class="flex-1 px-6 py-8 max-w-5xl w-full mx-auto anim-pop-in relative">
 
-      <!-- Welcome row -->
-      <div class="flex flex-col gap-5 mb-8">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl"
-               style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 0 30px rgba(99,102,241,.3)">📚</div>
-          <div>
-            <h1 class="text-xl font-extrabold text-white">Xush kelibsiz, <span style="color:var(--accent)">{{ full_name }}</span>!</h1>
-            <p class="text-sm" style="color:var(--muted)">Davomat boshlanishidan oldin fanni tanlang</p>
-          </div>
-        </div>
-        <!-- Subject + Start -->
-        <div class="card p-5" style="border-color:rgba(99,102,241,.3)">
-          <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted)">
-            <i class="fa-solid fa-book-open mr-1"></i> Dars fani
-          </p>
-          <div class="flex flex-col sm:flex-row gap-3">
-            <input id="subject-input" type="text" class="field flex-1"
-                   placeholder="Masalan: Matematika, Fizika, Ingliz tili…"
-                   style="outline:none;transition:border-color .2s"
-                   onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"/>
-            <button id="start-btn" class="btn-primary whitespace-nowrap" onclick="startSession()">
-              <i class="fa-solid fa-circle-play"></i>
-              <span id="start-label">Davomatni boshlash</span>
-              <span id="start-loader" class="hidden"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
-            </button>
-          </div>
-          <p id="subject-error" class="hidden text-xs mt-2" style="color:#f87171">
-            <i class="fa-solid fa-circle-exclamation mr-1"></i>Fan nomini kiriting!
-          </p>
-        </div>
-      </div>
-
-      <!-- Stats -->
-      <div class="grid grid-cols-3 gap-4 mb-8">
-        <div class="card p-5 transition-all">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:rgba(99,102,241,.15)">
-            <i class="fa-solid fa-users" style="color:var(--accent);font-size:13px"></i>
-          </div>
-          <p id="stat-checkins" class="text-2xl font-bold text-white">0</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">Kelgan talabalar</p>
-        </div>
-        <div class="card p-5 transition-all">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:rgba(99,102,241,.15)">
-            <i class="fa-solid fa-hourglass-half" style="color:var(--accent);font-size:13px"></i>
-          </div>
-          <p id="stat-remaining" class="text-2xl font-bold text-white">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">Qolgan vaqt (s)</p>
-        </div>
-        <div class="card p-5 transition-all">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:rgba(99,102,241,.15)">
-            <i class="fa-solid fa-circle-check" style="color:var(--accent);font-size:13px"></i>
-          </div>
-          <p id="stat-status" class="text-2xl font-bold text-white">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">Sessiya holati</p>
-        </div>
-      </div>
-
-      <!-- QR Panel -->
-      <div id="qr-panel" class="hidden" id="qr-section">
-        <div class="card overflow-hidden" style="border-color:rgba(99,102,241,.3)">
-
-          <!-- Panel header -->
-          <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4" style="border-bottom:1px solid var(--border)">
-            <div class="flex items-center gap-3">
-              <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
-              </span>
-              <span class="font-semibold text-white text-sm">Faol sessiya</span>
-            </div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <!-- Set Location button -->
-              <button id="set-loc-btn" class="btn-outline" onclick="setClassroomLocation()">
-                <i class="fa-solid fa-location-crosshairs"></i> Sinf joylashuvini belgilash
-              </button>
-              <button id="refresh-btn" class="btn-outline" onclick="startSession()">
-                <i class="fa-solid fa-rotate"></i> Yangi token
-              </button>
+      <!-- ================= DASHBOARD SECTION ================= -->
+      <div id="sec-dashboard" class="section block">
+        <!-- Welcome row -->
+        <div class="flex flex-col gap-5 mb-8">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl"
+                 style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 0 30px rgba(99,102,241,.3)">📚</div>
+            <div>
+              <h1 class="text-xl font-extrabold text-dynamic" data-i18n="welcome">Xush kelibsiz, <span style="color:var(--accent)" class="profile-name-display">{{ full_name }}</span>!</h1>
+              <p class="text-sm" style="color:var(--muted)" data-i18n="select_subject">Davomat boshlanishidan oldin fanni tanlang</p>
             </div>
           </div>
-
-          <!-- Location status bar -->
-          <div id="loc-bar" class="hidden px-6 py-2.5 text-xs flex items-center gap-2" style="background:rgba(16,185,129,.08);border-bottom:1px solid rgba(16,185,129,.2)">
-            <i class="fa-solid fa-location-dot text-emerald-400"></i>
-            <span id="loc-text" class="text-emerald-300"></span>
-          </div>
-
-          <!-- Body: QR left, info right -->
-          <div class="flex flex-col lg:flex-row">
-
-            <!-- QR image -->
-            <div class="flex flex-col items-center justify-center p-8" style="border-right:1px solid var(--border)">
-              <div class="relative group cursor-pointer" onclick="openFullscreen()" title="Kattalashtirish uchun bosing">
-                <div class="absolute inset-0 rounded-2xl anim-ping-ring" style="background:rgba(99,102,241,.15);blur:16px"></div>
-                <img id="qr-img" src="" alt="QR"
-                     class="relative rounded-2xl w-52 h-52 object-contain transition-transform duration-200 group-hover:scale-105"
-                     style="border:3px solid rgba(99,102,241,.4);background:#070c1b"/>
-                <!-- Hover overlay -->
-                <div class="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                     style="background:rgba(0,0,0,.55)">
-                  <div class="text-center">
-                    <i class="fa-solid fa-expand text-white text-2xl mb-1"></i>
-                    <p class="text-white text-xs font-semibold">Proyektorga chiqarish</p>
-                  </div>
-                </div>
-              </div>
-              <!-- Fullscreen button -->
-              <button onclick="openFullscreen()"
-                      class="mt-4 btn-outline text-xs px-4 py-2 w-full justify-center">
-                <i class="fa-solid fa-expand"></i> To'liq ekran (Proyektor)
+          <!-- Subject + Start -->
+          <div class="card p-5" style="border-color:rgba(99,102,241,.3)">
+            <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted)">
+              <i class="fa-solid fa-book-open mr-1"></i> <span data-i18n="lesson_subject">Dars fani</span>
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <input id="subject-input" type="text" class="field flex-1"
+                     placeholder="Masalan: Matematika, Fizika, Ingliz tili…" data-i18n-placeholder="subject_placeholder" />
+              <button id="start-btn" class="btn-primary whitespace-nowrap" onclick="startSession()">
+                <i class="fa-solid fa-circle-play"></i>
+                <span id="start-label" data-i18n="start_attendance">Davomatni boshlash</span>
+                <span id="start-loader" class="hidden"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
               </button>
-              <!-- Countdown -->
-              <div class="mt-4 flex items-center gap-3">
-                <svg id="countdown-svg" width="48" height="48" viewBox="0 0 52 52">
-                  <circle id="countdown-track" cx="26" cy="26" r="23"/>
-                  <circle id="countdown-progress" cx="26" cy="26" r="23"
-                          stroke-dasharray="144.51" stroke-dashoffset="0"/>
-                </svg>
-                <div>
-                  <p class="font-bold text-white text-lg leading-none" id="countdown-num">5:00</p>
-                  <p class="text-xs mt-0.5" style="color:var(--muted)">qoldi</p>
-                </div>
-              </div>
             </div>
+            <p id="subject-error" class="hidden text-xs mt-2" style="color:#f87171">
+              <i class="fa-solid fa-circle-exclamation mr-1"></i><span data-i18n="enter_subject_error">Fan nomini kiriting!</span>
+            </p>
+          </div>
+        </div>
 
-            <!-- Right info panel -->
-            <div class="flex-1 p-6 flex flex-col gap-5">
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-4 mb-8">
+          <div class="card p-5 transition-all">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:var(--icon-bg)">
+              <i class="fa-solid fa-users" style="color:var(--accent);font-size:13px"></i>
+            </div>
+            <p id="stat-checkins" class="text-2xl font-bold text-dynamic">0</p>
+            <p class="text-xs mt-1" style="color:var(--muted)" data-i18n="attended_students">Kelgan talabalar</p>
+          </div>
+          <div class="card p-5 transition-all">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:var(--icon-bg)">
+              <i class="fa-solid fa-hourglass-half" style="color:var(--accent);font-size:13px"></i>
+            </div>
+            <p id="stat-remaining" class="text-2xl font-bold text-dynamic">—</p>
+            <p class="text-xs mt-1" style="color:var(--muted)" data-i18n="remaining_time">Qolgan vaqt (s)</p>
+          </div>
+          <div class="card p-5 transition-all">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style="background:var(--icon-bg)">
+              <i class="fa-solid fa-circle-check" style="color:var(--accent);font-size:13px"></i>
+            </div>
+            <p id="stat-status" class="text-2xl font-bold text-dynamic">—</p>
+            <p class="text-xs mt-1" style="color:var(--muted)" data-i18n="session_status">Sessiya holati</p>
+          </div>
+        </div>
 
-              <!-- Token -->
-              <div>
-                <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--muted)">Sessiya tokeni</p>
-                <div class="flex items-center gap-2">
-                  <code id="token-display" class="field flex-1 truncate"></code>
-                  <button id="copy-token" class="btn-outline px-3 py-2" title="Nusxa olish">
-                    <i class="fa-solid fa-copy"></i>
-                  </button>
-                </div>
+        <!-- QR Panel -->
+        <div id="qr-panel" class="hidden">
+          <div class="card overflow-hidden" style="border-color:rgba(99,102,241,.3)">
+
+            <!-- Panel header -->
+            <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4" style="border-bottom:1px solid var(--border)">
+              <div class="flex items-center gap-3">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                </span>
+                <span class="font-semibold text-dynamic text-sm" data-i18n="active_session">Faol sessiya</span>
               </div>
-
-              <!-- URL -->
-              <div>
-                <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--muted)">Check-in URL</p>
-                <p id="checkin-url" class="field break-all w-full"></p>
-              </div>
-
-              <!-- Checkins + Export -->
-              <div class="flex-1 flex flex-col justify-end gap-3">
-                <div class="p-5 rounded-2xl" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2)">
-                  <p class="text-xs uppercase tracking-widest mb-1" style="color:var(--accent)">Checked-in talabalar</p>
-                  <div class="flex items-end gap-2">
-                    <span id="checkin-count" class="text-5xl font-extrabold text-white anim-count-up">0</span>
-                    <span class="text-sm mb-1" style="color:var(--muted)">nafar</span>
-                  </div>
-                  <p class="text-xs mt-2" style="color:var(--muted)">Yangilanish: <span id="next-poll" class="text-slate-300">3s</span></p>
-                </div>
-
-                <button id="export-btn" class="btn-green w-full justify-center">
-                  <i class="fa-solid fa-file-excel"></i> Excel (xlsx) yuklab olish
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Set Location button -->
+                <button id="set-loc-btn" class="btn-outline" onclick="setClassroomLocation()">
+                  <i class="fa-solid fa-location-crosshairs"></i> <span data-i18n="set_location">Sinf joylashuvini belgilash</span>
+                </button>
+                <button id="refresh-btn" class="btn-outline" onclick="startSession()">
+                  <i class="fa-solid fa-rotate"></i> <span data-i18n="new_token">Yangi token</span>
                 </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Expired banner -->
-        <div id="expired-banner" class="hidden mt-4 flex items-start gap-3 p-5 rounded-2xl"
-             style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25)">
-          <i class="fa-solid fa-triangle-exclamation text-red-400 mt-0.5"></i>
-          <div>
-            <p class="text-red-300 font-semibold text-sm">Sessiya muddati tugadi!</p>
-            <p class="text-red-400/70 text-xs mt-0.5">Fan va sessiyani qayta boshlash uchun yuqoridagi tugmani bosing.</p>
-          </div>
-        </div>
-
-        <!-- Students live list -->
-        <div id="students-panel" class="hidden mt-5 card overflow-hidden" style="border-color:rgba(16,185,129,.25)">
-          <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--border);background:rgba(16,185,129,.06)">
-            <div class="flex items-center gap-2">
-              <i class="fa-solid fa-users text-emerald-400 text-sm"></i>
-              <span class="font-semibold text-white text-sm">Kelgan talabalar ro'yxati</span>
+            <!-- Location status bar -->
+            <div id="loc-bar" class="hidden px-6 py-2.5 text-xs flex items-center gap-2" style="background:rgba(16,185,129,.08);border-bottom:1px solid rgba(16,185,129,.2)">
+              <i class="fa-solid fa-location-dot text-emerald-500"></i>
+              <span id="loc-text" class="text-emerald-500"></span>
             </div>
-            <span id="students-badge" class="text-xs font-bold px-3 py-1 rounded-full" style="background:rgba(16,185,129,.15);color:#34d399">0 nafar</span>
+
+            <!-- Body: QR left, info right -->
+            <div class="flex flex-col lg:flex-row">
+
+              <!-- QR image -->
+              <div class="flex flex-col items-center justify-center p-8" style="border-right:1px solid var(--border)">
+                <div class="relative group cursor-pointer" onclick="openFullscreen()" title="Kattalashtirish uchun bosing">
+                  <div class="absolute inset-0 rounded-2xl anim-ping-ring" style="background:rgba(99,102,241,.15);blur:16px"></div>
+                  <img id="qr-img" src="" alt="QR"
+                       class="relative rounded-2xl w-52 h-52 object-contain transition-transform duration-200 group-hover:scale-105"
+                       style="border:3px solid rgba(99,102,241,.4);background:#fff"/>
+                  <!-- Hover overlay -->
+                  <div class="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                       style="background:rgba(0,0,0,.55)">
+                    <div class="text-center">
+                      <i class="fa-solid fa-expand text-white text-2xl mb-1"></i>
+                      <p class="text-white text-xs font-semibold" data-i18n="projector">Proyektorga chiqarish</p>
+                    </div>
+                  </div>
+                </div>
+                <!-- Fullscreen button -->
+                <button onclick="openFullscreen()"
+                        class="mt-4 btn-outline text-xs px-4 py-2 w-full justify-center">
+                  <i class="fa-solid fa-expand"></i> <span data-i18n="fullscreen">To'liq ekran (Proyektor)</span>
+                </button>
+                <!-- Countdown -->
+                <div class="mt-4 flex items-center gap-3">
+                  <svg id="countdown-svg" width="48" height="48" viewBox="0 0 52 52">
+                    <circle id="countdown-track" cx="26" cy="26" r="23"/>
+                    <circle id="countdown-progress" cx="26" cy="26" r="23"
+                            stroke-dasharray="144.51" stroke-dashoffset="0"/>
+                  </svg>
+                  <div>
+                    <p class="font-bold text-dynamic text-lg leading-none" id="countdown-num">5:00</p>
+                    <p class="text-xs mt-0.5" style="color:var(--muted)" data-i18n="left">qoldi</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right info panel -->
+              <div class="flex-1 p-6 flex flex-col gap-5">
+
+                <!-- Token -->
+                <div>
+                  <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--muted)" data-i18n="session_token">Sessiya tokeni</p>
+                  <div class="flex items-center gap-2">
+                    <code id="token-display" class="field flex-1 truncate text-dynamic"></code>
+                    <button id="copy-token" class="btn-outline px-3 py-2" title="Nusxa olish">
+                      <i class="fa-solid fa-copy"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- URL -->
+                <div>
+                  <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--muted)">Check-in URL</p>
+                  <p id="checkin-url" class="field break-all w-full text-dynamic"></p>
+                </div>
+
+                <!-- Checkins + Export -->
+                <div class="flex-1 flex flex-col justify-end gap-3">
+                  <div class="p-5 rounded-2xl" style="background:var(--icon-bg);border:1px solid rgba(99,102,241,.2)">
+                    <p class="text-xs uppercase tracking-widest mb-1" style="color:var(--accent)" data-i18n="checked_in_students">Checked-in talabalar</p>
+                    <div class="flex items-end gap-2">
+                      <span id="checkin-count" class="text-5xl font-extrabold text-dynamic anim-count-up">0</span>
+                      <span class="text-sm mb-1" style="color:var(--muted)" data-i18n="students_count">nafar</span>
+                    </div>
+                    <p class="text-xs mt-2" style="color:var(--muted)"><span data-i18n="updated">Yangilanish</span>: <span id="next-poll" class="text-dynamic opacity-70">3s</span></p>
+                  </div>
+
+                  <button id="export-btn" class="btn-green w-full justify-center">
+                    <i class="fa-solid fa-file-excel"></i> <span data-i18n="download_excel">Excel (xlsx) yuklab olish</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div id="students-list" class="divide-y" style="border-color:var(--border);max-height:320px;overflow-y:auto">
-            <p class="text-center py-6 text-sm" style="color:var(--muted)">Hali hech kim davomat qilmagan…</p>
+
+          <!-- Expired banner -->
+          <div id="expired-banner" class="hidden mt-4 flex items-start gap-3 p-5 rounded-2xl"
+               style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25)">
+            <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5"></i>
+            <div>
+              <p class="text-red-500 font-semibold text-sm" data-i18n="session_expired">Sessiya muddati tugadi!</p>
+              <p class="text-red-500 opacity-80 text-xs mt-0.5" data-i18n="restart_session_hint">Fan va sessiyani qayta boshlash uchun yuqoridagi tugmani bosing.</p>
+            </div>
+          </div>
+
+          <!-- Students live list -->
+          <div id="students-panel" class="hidden mt-5 card overflow-hidden" style="border-color:rgba(16,185,129,.25)">
+            <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--border);background:rgba(16,185,129,.06)">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-users text-emerald-500 text-sm"></i>
+                <span class="font-semibold text-dynamic text-sm" data-i18n="attended_list">Kelgan talabalar ro'yxati</span>
+              </div>
+              <span id="students-badge" class="text-xs font-bold px-3 py-1 rounded-full" style="background:rgba(16,185,129,.15);color:#10b981">0 <span data-i18n="students_count">nafar</span></span>
+            </div>
+            <div id="students-list" class="divide-y" style="border-color:var(--border);max-height:320px;overflow-y:auto">
+              <p class="text-center py-6 text-sm" style="color:var(--muted)" data-i18n="no_attendees">Hali hech kim davomat qilmagan…</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Placeholder -->
+        <div id="placeholder" class="rounded-2xl text-center py-16"
+             style="border:2px dashed rgba(99,102,241,.25);background:var(--icon-bg)">
+          <div class="text-5xl mb-4">📲</div>
+          <p class="text-dynamic font-semibold text-lg" data-i18n="qr_placeholder">QR kodni boshlash uchun yuqoridagi tugmani bosing</p>
+          <p class="text-sm mt-2" style="color:var(--muted)" data-i18n="qr_hint">Talabalar skanerlash orqali davomatni belgilaydilar</p>
+        </div>
+      </div>
+
+      <!-- ================= REPORTS SECTION ================= -->
+      <div id="sec-report" class="section hidden">
+        <h2 class="text-2xl font-bold text-dynamic mb-6" data-i18n="reports">Hisobot</h2>
+        <div class="card p-6">
+          <p class="text-sm mb-4" style="color:var(--muted)" data-i18n="report_desc">Darslar bo'yicha qatnashish statistikasi</p>
+          <canvas id="reportsChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- ================= SETTINGS SECTION ================= -->
+      <div id="sec-settings" class="section hidden">
+        <h2 class="text-2xl font-bold text-dynamic mb-6" data-i18n="settings">Sozlamalar</h2>
+        
+        <div class="card p-6 mb-6">
+          <h3 class="text-lg font-semibold text-dynamic mb-4" data-i18n="system_settings">Tizim sozlamalari</h3>
+          
+          <div class="flex items-center justify-between mb-4 border-b pb-4" style="border-color:var(--border)">
+            <div>
+              <p class="font-medium text-dynamic" data-i18n="theme">Rejim</p>
+              <p class="text-xs" style="color:var(--muted)" data-i18n="theme_desc">Tungi yoki kunduzgi rejimni tanlang</p>
+            </div>
+            <select id="theme-select" class="field w-40" onchange="changeTheme(this.value)">
+              <option value="dark" data-i18n="dark_mode">Tungi rejim</option>
+              <option value="light" data-i18n="light_mode">Kunduzgi rejim</option>
+            </select>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-dynamic" data-i18n="language">Til</p>
+              <p class="text-xs" style="color:var(--muted)" data-i18n="language_desc">Tizim tilini tanlang</p>
+            </div>
+            <select id="lang-select" class="field w-40" onchange="changeLang(this.value)">
+              <option value="uz">O'zbek</option>
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </div>
       </div>
 
-      <!-- Placeholder -->
-      <div id="placeholder" class="rounded-2xl text-center py-16"
-           style="border:2px dashed rgba(99,102,241,.25);background:rgba(99,102,241,.04)">
-        <div class="text-5xl mb-4">📲</div>
-        <p class="text-white font-semibold text-lg">QR kodni boshlash uchun yuqoridagi tugmani bosing</p>
-        <p class="text-sm mt-2" style="color:var(--muted)">Talabalar skanerlash orqali davomatni belgilaydilar</p>
+      <!-- ================= PROFILE SECTION ================= -->
+      <div id="sec-profile" class="section hidden">
+        <h2 class="text-2xl font-bold text-dynamic mb-6" data-i18n="profile">Profil</h2>
+        <div class="card p-6 max-w-md">
+          <form id="profile-form" onsubmit="updateProfile(event)">
+            <div class="mb-4">
+              <label class="block text-xs uppercase tracking-widest mb-1 text-dynamic" data-i18n="full_name_label">To'liq ism</label>
+              <input type="text" id="prof-fullname" class="field" value="{{ full_name }}" required>
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs uppercase tracking-widest mb-1 text-dynamic" data-i18n="username_label">Login</label>
+              <input type="text" id="prof-username" class="field" value="{{ username }}" required>
+            </div>
+            <div class="mb-6">
+              <label class="block text-xs uppercase tracking-widest mb-1 text-dynamic" data-i18n="new_password">Yangi parol</label>
+              <input type="password" id="prof-password" class="field" placeholder="Bo'sh qolsa o'zgarmaydi">
+            </div>
+            <button type="submit" class="btn-primary w-full justify-center">
+              <i class="fa-solid fa-save"></i> <span data-i18n="save_changes">Saqlash</span>
+            </button>
+            <p id="prof-msg" class="mt-3 text-sm text-center hidden"></p>
+          </form>
+        </div>
       </div>
 
     </main>
   </div><!-- /main -->
 
   <script>
-    /* ── Constants ── */
+    /* ── Localization ── */
+    const translations = {
+      uz: {
+        teacher_panel: "O'qituvchi paneli", menu: "Menyu", home: "Bosh sahifa", reports: "Hisobot", 
+        settings: "Sozlamalar", profile: "Profil", teacher: "O'qituvchi", welcome: "Xush kelibsiz, ",
+        select_subject: "Davomat boshlanishidan oldin fanni tanlang", lesson_subject: "Dars fani",
+        subject_placeholder: "Masalan: Matematika, Fizika, Ingliz tili…", start_attendance: "Davomatni boshlash",
+        enter_subject_error: "Fan nomini kiriting!", attended_students: "Kelgan talabalar", remaining_time: "Qolgan vaqt (s)",
+        session_status: "Sessiya holati", active_session: "Faol sessiya", set_location: "Sinf joylashuvini belgilash",
+        new_token: "Yangi token", projector: "Proyektorga chiqarish", fullscreen: "To'liq ekran (Proyektor)", left: "qoldi",
+        session_token: "Sessiya tokeni", checked_in_students: "Checked-in talabalar", students_count: "nafar",
+        updated: "Yangilanish", download_excel: "Excel (xlsx) yuklab olish", session_expired: "Sessiya muddati tugadi!",
+        restart_session_hint: "Fan va sessiyani qayta boshlash uchun yuqoridagi tugmani bosing.",
+        attended_list: "Kelgan talabalar ro'yxati", no_attendees: "Hali hech kim davomat qilmagan…",
+        qr_placeholder: "QR kodni boshlash uchun yuqoridagi tugmani bosing", qr_hint: "Talabalar skanerlash orqali davomatni belgilaydilar",
+        report_desc: "Darslar bo'yicha qatnashish statistikasi", system_settings: "Tizim sozlamalari", theme: "Rejim",
+        theme_desc: "Tungi yoki kunduzgi rejimni tanlang", dark_mode: "Tungi rejim", light_mode: "Kunduzgi rejim",
+        language: "Til", language_desc: "Tizim tilini tanlang", full_name_label: "To'liq ism", username_label: "Login",
+        new_password: "Yangi parol (ixtiyoriy)", save_changes: "Saqlash", qr_menu: "Davomat QR"
+      },
+      ru: {
+        teacher_panel: "Панель учителя", menu: "Меню", home: "Главная", reports: "Отчеты", 
+        settings: "Настройки", profile: "Профиль", teacher: "Учитель", welcome: "Добро пожаловать, ",
+        select_subject: "Выберите предмет перед началом", lesson_subject: "Предмет урока",
+        subject_placeholder: "Например: Математика, Физика…", start_attendance: "Начать",
+        enter_subject_error: "Введите название предмета!", attended_students: "Присутствующие", remaining_time: "Осталось (с)",
+        session_status: "Статус сессии", active_session: "Активная сессия", set_location: "Установить местоположение",
+        new_token: "Новый токен", projector: "Показать на проекторе", fullscreen: "На весь экран", left: "осталось",
+        session_token: "Токен сессии", checked_in_students: "Отметившиеся студенты", students_count: "чел.",
+        updated: "Обновление", download_excel: "Скачать Excel (xlsx)", session_expired: "Срок действия сессии истек!",
+        restart_session_hint: "Нажмите кнопку выше, чтобы перезапустить предмет и сессию.",
+        attended_list: "Список присутствующих", no_attendees: "Пока никто не отметился…",
+        qr_placeholder: "Нажмите кнопку выше, чтобы начать", qr_hint: "Студенты будут отмечаться путем сканирования",
+        report_desc: "Статистика посещаемости по предметам", system_settings: "Системные настройки", theme: "Тема",
+        theme_desc: "Выберите темную или светлую тему", dark_mode: "Темная", light_mode: "Светлая",
+        language: "Язык", language_desc: "Выберите язык системы", full_name_label: "Полное имя", username_label: "Логин",
+        new_password: "Новый пароль", save_changes: "Сохранить", qr_menu: "QR Посещаемость"
+      },
+      en: {
+        teacher_panel: "Teacher Panel", menu: "Menu", home: "Home", reports: "Reports", 
+        settings: "Settings", profile: "Profile", teacher: "Teacher", welcome: "Welcome, ",
+        select_subject: "Select subject before starting", lesson_subject: "Subject",
+        subject_placeholder: "e.g., Math, Physics, English...", start_attendance: "Start Attendance",
+        enter_subject_error: "Enter subject name!", attended_students: "Attended Students", remaining_time: "Time Left (s)",
+        session_status: "Session Status", active_session: "Active Session", set_location: "Set Class Location",
+        new_token: "New Token", projector: "Show on Projector", fullscreen: "Fullscreen (Projector)", left: "left",
+        session_token: "Session Token", checked_in_students: "Checked-in Students", students_count: "students",
+        updated: "Update", download_excel: "Download Excel (xlsx)", session_expired: "Session expired!",
+        restart_session_hint: "Click the button above to restart the session.",
+        attended_list: "List of Attended Students", no_attendees: "No one has checked in yet...",
+        qr_placeholder: "Click the button above to start QR", qr_hint: "Students will check in by scanning",
+        report_desc: "Attendance statistics by lessons", system_settings: "System Settings", theme: "Theme",
+        theme_desc: "Select dark or light mode", dark_mode: "Dark Mode", light_mode: "Light Mode",
+        language: "Language", language_desc: "Select system language", full_name_label: "Full Name", username_label: "Username",
+        new_password: "New Password", save_changes: "Save Changes", qr_menu: "Attendance QR"
+      }
+    };
+
+    function applyTranslations() {
+      const lang = localStorage.getItem('lang') || 'uz';
+      document.getElementById('lang-select').value = lang;
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang][key]) el.innerHTML = translations[lang][key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[lang][key]) el.placeholder = translations[lang][key];
+      });
+    }
+
+    function changeLang(lang) {
+      localStorage.setItem('lang', lang);
+      applyTranslations();
+      if(reportsLoaded) loadReports(); // Reload chart labels
+    }
+
+    /* ── Theme ── */
+    function applyTheme() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.getElementById('theme-select').value = theme;
+      if (theme === 'light') document.body.classList.add('light-mode');
+      else document.body.classList.remove('light-mode');
+      if(reportsLoaded) loadReports(); // Reload chart colors
+    }
+
+    function changeTheme(theme) {
+      localStorage.setItem('theme', theme);
+      applyTheme();
+    }
+
+    /* ── Sections ── */
+    let reportsLoaded = false;
+    let chartInstance = null;
+
+    function showSection(id, scrollQR = false) {
+      document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+      document.getElementById('sec-' + id).classList.remove('hidden');
+      
+      document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+      const navBtn = document.getElementById('nav-' + id);
+      if(navBtn) navBtn.classList.add('active');
+      if(scrollQR) {
+          const qrBtn = document.getElementById('nav-qr');
+          if(qrBtn) qrBtn.classList.add('active');
+          if(navBtn) navBtn.classList.remove('active');
+      }
+
+      if (id === 'report') {
+        loadReports();
+      }
+      if(scrollQR && document.getElementById('qr-panel') && !document.getElementById('qr-panel').classList.contains('hidden')) {
+          document.getElementById('qr-panel').scrollIntoView({behavior: 'smooth'});
+      }
+    }
+
+    /* ── Profile Update ── */
+    async function updateProfile(e) {
+      e.preventDefault();
+      const fn = document.getElementById('prof-fullname').value;
+      const un = document.getElementById('prof-username').value;
+      const pw = document.getElementById('prof-password').value;
+      const msg = document.getElementById('prof-msg');
+      msg.classList.remove('hidden');
+      msg.textContent = "Kuting..."; msg.style.color = "var(--muted)";
+      
+      try {
+        const res = await fetch('/api/update_profile', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({full_name: fn, username: un, password: pw})
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.textContent = data.message; msg.style.color = "#10b981";
+          document.querySelectorAll('.profile-name-display').forEach(el => el.textContent = fn);
+          document.getElementById('prof-password').value = "";
+        } else {
+          msg.textContent = data.error; msg.style.color = "#ef4444";
+        }
+      } catch (err) {
+        msg.textContent = "Xatolik yuz berdi."; msg.style.color = "#ef4444";
+      }
+    }
+
+    /* ── Reports (Chart.js) ── */
+    async function loadReports() {
+      reportsLoaded = true;
+      try {
+        const res = await fetch('/api/reports');
+        const data = await res.json();
+        if (data.success) {
+          renderChart(data.data);
+        }
+      } catch (e) {
+        console.error("Error loading reports", e);
+      }
+    }
+
+    function renderChart(data) {
+      const ctx = document.getElementById('reportsChart').getContext('2d');
+      const isLight = document.body.classList.contains('light-mode');
+      const textColor = isLight ? '#0f172a' : '#e2e8f0';
+      const gridColor = isLight ? '#e2e8f0' : '#1a2540';
+      
+      const labels = data.map(d => d.date + " (" + d.subject + ")");
+      const values = data.map(d => d.total);
+
+      if (chartInstance) chartInstance.destroy();
+
+      const lang = localStorage.getItem('lang') || 'uz';
+      const dsLabel = lang === 'en' ? 'Attendance' : (lang === 'ru' ? 'Посещаемость' : 'Davomat');
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: dsLabel,
+            data: values,
+            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+            borderColor: 'rgba(99, 102, 241, 1)',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: textColor } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: textColor, stepSize: 1 },
+              grid: { color: gridColor }
+            },
+            x: {
+              ticks: { color: textColor },
+              grid: { color: gridColor }
+            }
+          }
+        }
+      });
+    }
+
+    /* ── Init ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      applyTheme();
+      applyTranslations();
+    });
+
+    /* ── Existing QR Logic ── */
     const SESSION_TTL = 300;
     const POLL_MS     = 3000;
     const CIRC_LEN    = 144.51;
 
-    /* ── State ── */
     let currentToken   = null;
     let currentSubject = "";
     let pollTimer      = null;
     let cdTimer        = null;
     let pollCD         = POLL_MS / 1000;
 
-    /* ── DOM ── */
     const $  = id => document.getElementById(id);
     const startBtn    = $("start-btn");
     const startLabel  = $("start-label");
     const startLoader = $("start-loader");
 
-    /* ── Sidebar (mobile) ── */
     function openSidebar()  { $("sidebar").classList.remove("-translate-x-full"); $("overlay").classList.remove("hidden"); }
     function closeSidebar() { $("sidebar").classList.add("-translate-x-full");    $("overlay").classList.add("hidden"); }
 
-    /* ── Countdown ── */
     function fmt(s){ return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; }
     function updateCD(r){
       $("countdown-num").textContent = fmt(r);
@@ -370,7 +662,6 @@
     function startCD(r){ clearInterval(cdTimer); updateCD(r);
       cdTimer = setInterval(() => { r--; if(r<0){clearInterval(cdTimer);return;} updateCD(r); }, 1000); }
 
-    /* ── Expire ── */
     function markExpired(){
       clearInterval(pollTimer); clearInterval(cdTimer);
       $("expired-banner").classList.remove("hidden");
@@ -379,18 +670,16 @@
       startLabel.textContent = "Yangi sessiya";
     }
 
-    /* ── Count animation ── */
     function animCount(el, v){
       if(parseInt(el.textContent)||0 !== v){ el.textContent=v;
         el.classList.remove("anim-count-up"); void el.offsetWidth; el.classList.add("anim-count-up"); }
     }
 
-    /* ── Render students list ── */
     function renderStudents(students){
       const list = $("students-list");
       const badge = $("students-badge");
       if(!students || students.length===0){
-        list.innerHTML='<p class="text-center py-6 text-sm" style="color:var(--muted)">Hali hech kim davomat qilmagan…</p>';
+        list.innerHTML=`<p class="text-center py-6 text-sm" style="color:var(--muted)" data-i18n="no_attendees">Hali hech kim davomat qilmagan…</p>`;
         badge.textContent="0 nafar";
         return;
       }
@@ -399,9 +688,9 @@
         const t = new Date(s.marked_at).toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
         return `<div class="flex items-center gap-3 px-5 py-3">
           <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style="background:rgba(99,102,241,.2);color:var(--accent)">${i+1}</span>
+                style="background:var(--icon-bg);color:var(--accent)">${i+1}</span>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-white truncate">${s.full_name}</p>
+            <p class="text-sm font-semibold text-dynamic truncate">${s.full_name}</p>
             <p class="text-xs" style="color:var(--muted)">${s.username}</p>
           </div>
           <div class="text-right shrink-0">
@@ -412,7 +701,6 @@
       }).join("");
     }
 
-    /* ── Poll ── */
     async function poll(){
       if(!currentToken) return;
       try{
@@ -427,7 +715,6 @@
     }
     setInterval(()=>{ if(!currentToken) return; pollCD=Math.max(0,pollCD-1); $("next-poll").textContent=pollCD+"s"; }, 1000);
 
-    /* ── Start session ── */
     async function startSession(){
       const subjectInput = $("subject-input");
       const subject = subjectInput ? subjectInput.value.trim() : "";
@@ -467,6 +754,7 @@
         clearInterval(pollTimer);
         pollTimer = setInterval(poll, POLL_MS);
         startLabel.textContent = "Yangi sessiya";
+        showSection('dashboard', true); // jump to dashboard
       }catch(e){ alert("Server bilan bog'lanib bo'lmadi."); }
       finally{
         startBtn.disabled = false;
@@ -475,7 +763,6 @@
       }
     }
 
-    /* ── Set classroom location ── */
     async function setClassroomLocation(){
       if(!currentToken){ alert("Avval sessiya yarating."); return; }
       const btn = $("set-loc-btn");
@@ -500,7 +787,6 @@
       },{enableHighAccuracy:true,timeout:10000});
     }
 
-    /* ── Copy token ── */
     $("copy-token").addEventListener("click",()=>{
       if(!currentToken) return;
       navigator.clipboard.writeText(currentToken).then(()=>{
@@ -509,13 +795,11 @@
       });
     });
 
-    /* ── Export ── */
     $("export-btn").addEventListener("click",()=>{
       if(!currentToken) return;
       window.location.href=`/api/export_session/${currentToken}`;
     });
 
-    /* ── Fullscreen QR ── */
     function openFullscreen(){
       if(!currentToken){ alert("Avval sessiya yarating."); return; }
       $("fs-qr-img").src = $("qr-img").src;
@@ -527,8 +811,6 @@
       document.body.style.overflow = "";
     }
     document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeFullscreen(); });
-    // Keep fullscreen checkin count in sync with poll
-    const _origAnimCount = animCount;
     const origPoll = poll;
     poll = async function(){
       await origPoll();
@@ -543,54 +825,35 @@
   <!-- ══ FULLSCREEN QR MODAL ══════════════════════════════════════════ -->
   <div id="fs-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center"
        style="background:rgba(4,7,18,.97);backdrop-filter:blur(8px)">
-
-    <!-- Close button -->
     <button onclick="closeFullscreen()"
-            class="absolute top-5 right-5 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 border border-slate-700 hover:text-white hover:border-slate-500 transition-all"
-            title="Yopish (Esc)">
+            class="absolute top-5 right-5 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 border border-slate-700 hover:text-white hover:border-slate-500 transition-all">
       <i class="fa-solid fa-xmark"></i> Yopish
     </button>
-
-    <!-- Content -->
     <div class="flex flex-col items-center gap-6 px-6 py-8 text-center max-w-lg w-full">
-
-      <!-- Title -->
       <div>
         <p class="text-slate-400 text-sm uppercase tracking-widest mb-1">Aqilli Davomat</p>
         <h2 class="text-2xl font-extrabold text-white">QR kodni skaner qiling</h2>
         <p class="text-slate-500 text-sm mt-1">Telefoningiz kamerasini QR kodga yo'naltiring</p>
       </div>
-
-      <!-- Big QR -->
       <div class="relative">
         <div class="absolute inset-0 rounded-3xl" style="background:rgba(99,102,241,.2);filter:blur(30px)"></div>
         <img id="fs-qr-img" src="" alt="QR"
              class="relative rounded-3xl object-contain"
-             style="width:min(480px,85vw);height:min(480px,85vw);border:4px solid rgba(99,102,241,.5);background:#070c1b"/>
+             style="width:min(480px,85vw);height:min(480px,85vw);border:4px solid rgba(99,102,241,.5);background:#fff"/>
       </div>
-
-      <!-- Live stats row -->
       <div class="flex items-center gap-8">
-        <!-- Countdown -->
         <div class="text-center">
           <p id="fs-countdown" class="text-3xl font-extrabold text-white leading-none">5:00</p>
           <p class="text-slate-500 text-xs mt-1">vaqt qoldi</p>
         </div>
-        <!-- Divider -->
         <div style="width:1px;height:40px;background:#1a2540"></div>
-        <!-- Checkins -->
         <div class="text-center">
           <p id="fs-checkin-count" class="text-3xl font-extrabold leading-none" style="color:#6366f1">0</p>
           <p class="text-slate-500 text-xs mt-1">talaba qayd etdi</p>
         </div>
       </div>
-
-      <p class="text-slate-600 text-xs">
-        ESC tugmasi yoki "Yopish" tugmasi bilan yopasiz
-      </p>
+      <p class="text-slate-600 text-xs">ESC tugmasi yoki "Yopish" tugmasi bilan yopasiz</p>
     </div>
   </div>
-
 </body>
 </html>
-
