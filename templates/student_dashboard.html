@@ -611,7 +611,7 @@
       scanner = new Html5Qrcode("qr-reader");
       scannerActive = true;
 
-      const constraints = { facingMode: "environment", advanced: [{ zoom: 1.0 }] };
+      const constraints = { facingMode: "environment" };
       const config = {
         fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0,
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
